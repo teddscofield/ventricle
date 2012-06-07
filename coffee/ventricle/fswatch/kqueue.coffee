@@ -8,11 +8,14 @@ define (require, exports, module) ->
   # Return the existing EventEmitter or create one
   emitter = (path) ->
     unless emitters[path]?
-      emitters[path] = new _events.EventEmitter()
-      _fs.watch path, (event, file) ->
-        if e = emitters[path]
-          _util.debug _util.format('emit %s %s', event, _path.join(path, file))
-          e.emit event, _path.join(path, file)
+      try
+        emitters[path] = new _events.EventEmitter()
+        _fs.watch path, (event, file) ->
+          if e = emitters[path]
+            _util.debug _util.format('emit %s %s', event, _path.join(path, file))
+            e.emit event, _path.join(path, file)
+      catch error
+
     emitters[path]
 
   unlisten = (path, callback) ->
