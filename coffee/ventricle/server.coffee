@@ -16,7 +16,7 @@ define (require, exports, module) ->
   app = (port) -> (req, res) ->
     # Parse the requested URL
     url = _url.parse 'http://' + req.headers.host + req.url
-    _util.debug _util.format('app %s', url)
+    _util.debug _util.format('app %j', url)
 
     res.writeHead 200
     res.end(
@@ -36,39 +36,47 @@ define (require, exports, module) ->
       ,"  h.appendChild(s);"
       ,"};"
       ,""
-      ,"// Find CSS and subscribe to events"
+      ,"// Find assets and subscribe to events"
       ,"load('http://" + url.hostname + ":" + port + "/socket.io/socket.io.js', function() {"
-      ,"  var bound  = {};"
+      ,"  var styles = {};"
+      ,"  var images = {};"
       ,"  var socket = io.connect('http://" + url.hostname + ":" + port + "/');"
+      ,"  console.log(socket);"
+      ,"  console.log('connected: ' + socket.connected);"
+      ,"  console.log('connecting: ' + socket.connecting);"
+      ,"  console.log('transport: ' + socket.transport);"
       ,""
       ,"  socket.on('change', function(message) {"
-      ,"    console.log('change', message);"
-      ,""
       ,"    var a = document.createElement('a');"
       ,"        a.href   = message.url;"
       ,"        a.search = a.search.length"
       ,"          ? a.search + '&ventricle=' + Math.random()"
       ,"          : 'ventricle=' + Math.random();"
       ,""
-      ,"    if (bound[message.url])"
-      ,"      bound[message.url].href = a.href;"
+      ,"    if (styles[message.url])"
+      ,"      styles[message.url].href = a.href;"
+      ,""
+      ,"    if (images[message.url])"
+      ,"      images[message.url].src = a.href;"
       ,"  });"
       ,""
-      ,"  var bind = function($) {"
-      ,"    $(document).ready(function() {"
-      ,"      $('link').each(function(n, e) {"
-      ,"        if (e.rel.toLowerCase() != 'stylesheet')"
-      ,"          return;"
-      ,"        bound[e.href] = e;"
+      ,"  var inventory = function($) {"
+      ,"    $(window).load(function() {"
+      ,"      $('link[rel=stylesheet]').each(function(n, e) {"
+      ,"        styles[e.href] = e;"
       ,"        socket.emit('subscribe', {url: e.href});"
+      ,"      });"
+      ,"      $('img[src]').each(function(n, e) {"
+      ,"        images[e.src] = e;"
+      ,"        socket.emit('subscribe', {url: e.src});"
       ,"      });"
       ,"    });"
       ,"  };"
       ,""
       ,"  window.jQuery"
-      ,"    ? bind(jQuery)"
+      ,"    ? inventory(jQuery)"
       ,"    : load('http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js',"
-      ,"        function() { bind(jQuery); });"
+      ,"        function() { inventory(jQuery); });"
       ,"}); "].join("\n"))
 
   emitter = (file) ->
@@ -111,8 +119,11 @@ define (require, exports, module) ->
       socket.on 'subscribe', subscribe socket
       socket.on 'disconnect', disconnect socket
 
-  listener = new _fswatch.Listener (file) ->
-    emitter(file).emit 'change', file
+  listener = new _fswatch.Listener (path, err, info) ->
+    if info?.isDirectory()
+      listener.watchTree path
+    unless err?
+      emitter(path).emit 'change', path, err, info
 
   mount = (hostname, docroot, urlroot = '/') ->
     docroot = _path.resolve docroot
@@ -122,7 +133,7 @@ define (require, exports, module) ->
     else
       mounted[hostname] = {docroot: docroot, urlroot: urlroot}
 
-    listener.autoWatch docroot
+    listener.watchTree docroot
 
   start = (port) ->
     _app = _http.createServer(app port)
