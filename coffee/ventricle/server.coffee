@@ -47,6 +47,10 @@ define (require, exports, module) ->
     emitters[file] or= new _events.EventEmitter()
 
   resolve = (hostname, pathname) ->
+    unless mounted[hostname]?
+      _util.debug _util.format('resolve %s %s = FAIL', hostname, pathname)
+      return ""
+
     urlroot  = mounted[hostname].urlroot
     docroot  = mounted[hostname].docroot
     relative = _path.relative urlroot, pathname
@@ -129,10 +133,12 @@ define (require, exports, module) ->
       ,"  var images = {};"
       ,"  var socket = io.connect('" + url.protocol + "//" + url.host + "/');"
       ,""
-      ,"  console.log(socket);"
-      ,"  console.log('connected: ' + socket.connected);"
-      ,"  console.log('connecting: ' + socket.connecting);"
-      ,"  console.log('transport: ' + socket.transport);"
+      ,"  socket.on('helo', function() {"
+      ,"    window.jQuery"
+      ,"      ? inventory(jQuery)"
+      ,"      : load('http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js',"
+      ,"          function() { inventory(jQuery); });"
+      ,"  });"
       ,""
       ,"  socket.on('change', function(message) {"
       ,"    var a = document.createElement('a');"
@@ -148,25 +154,23 @@ define (require, exports, module) ->
       ,"      images[message.url].src = a.href;"
       ,"  });"
       ,""
+      ,"  var resolveUrl = function(href) {"
+      ,"    var a = $('<a href=' + href + '>...</a>');"
+      ,"        return a[0].href;"
+      ,"  };"
+      ,""
       ,"  var inventory = function($) {"
-      ,"    $(window).load(function() {"
+      ,"    $(document).ready(function() {"
       ,"      $('link[rel=stylesheet]').each(function(n, e) {"
-      ,"        styles[e.href] = e;"
-      ,"        socket.emit('subscribe', {url: e.href});"
+      ,"        styles[resolveUrl(e.href)] = e;"
+      ,"        socket.emit('subscribe', {url: resolveUrl(e.href)});"
       ,"      });"
       ,"      $('img[src]').each(function(n, e) {"
-      ,"        images[e.src] = e;"
-      ,"        socket.emit('subscribe', {url: e.src});"
+      ,"        images[resolveUrl(e.src)] = e;"
+      ,"        socket.emit('subscribe', {url: resolveUrl(e.src)});"
       ,"      });"
       ,"    });"
       ,"  };"
-      ,""
-      ,"  socket.on('helo', function() {"
-      ,"    window.jQuery"
-      ,"      ? inventory(jQuery)"
-      ,"      : load('http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js',"
-      ,"          function() { inventory(jQuery); });"
-      ,"  });"
       ,"}); "].join("\n")
 
   exports.start       = start
