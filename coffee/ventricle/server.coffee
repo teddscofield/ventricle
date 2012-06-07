@@ -1,5 +1,6 @@
 define (require, exports, module) ->
   _io       = require 'socket.io'
+  _fs       = require 'fs'
   _url      = require 'url'
   _http     = require 'http'
   _util     = require 'util'
@@ -16,10 +17,96 @@ define (require, exports, module) ->
   app = (port) -> (req, res) ->
     # Parse the requested URL
     url = _url.parse 'http://' + req.headers.host + req.url
-    _util.debug _util.format('app %j', url)
 
-    res.writeHead 200
-    res.end(
+    if url.pathname == '/ventricle.js'
+      res.writeHead 200
+      res.end bootstrap(url)
+    else
+      path = resolve url.hostname, url.pathname
+      _fs.stat path, (err, info) ->
+        unless info?.isFile()
+          res.writeHead 404, 'Not file'
+          res.end 'Not file: ' + path
+        else
+          res.writeHead 200, {'Content-Type': mimeType(path)}
+          _fs.createReadStream(path).pipe(res)
+
+  mimeType = (path) ->
+    table =
+      {'html': 'text/html'
+      ,'htm':  'text/html'
+      ,'css':  'text/css'
+      ,'js':   'text/javascript'
+      ,'jpeg': 'image/jpeg'
+      ,'jpg':  'image/jpeg'
+      ,'png':  'image/png'
+      ,'gif':  'image/gif'}
+    table[_path.extname(path).substring(1)] or 'data/binary'
+
+  emitter = (file) ->
+    emitters[file] or= new _events.EventEmitter()
+
+  resolve = (hostname, pathname) ->
+    urlroot  = mounted[hostname].urlroot
+    docroot  = mounted[hostname].docroot
+    relative = _path.relative urlroot, pathname
+    absolute = _path.join(docroot, relative)
+
+    _util.debug _util.format('resolve %s %s = %j', hostname, pathname, absolute)
+    absolute
+
+  subscribe = (socket) -> (data) ->
+    socket.get 'id', (err, id) ->
+      _util.debug _util.format('SUBSCRIBE %j', data)
+      url      = _url.parse(data.url)
+      emitter_ = emitter resolve(url.hostname, url.pathname)
+      listener = (path) -> socket.emit 'change', data
+      emitter_.on 'change', listener
+
+      sockets[id] or= {emitters: [], listeners: []}
+      sockets[id].emitters.push emitter_
+      sockets[id].listeners.push listener
+
+  disconnect = (socket) -> (data) ->
+    socket.get 'id', (err, id) ->
+      return unless sockets[id]?
+
+      for e in sockets[id].emitters
+        for l in sockets[id].listeners
+          e.removeListener 'change', l
+      delete sockets[id]
+
+  connect = (socket) ->
+    @id or= 0
+
+    socket.set 'id', @id += 1, () ->
+      socket.on 'subscribe', subscribe socket
+      socket.on 'disconnect', disconnect socket
+      socket.emit 'helo', null
+
+  listener = new _fswatch.Listener (path, err, info) ->
+    if info?.isDirectory()
+      listener.watchTree path
+    unless err?
+      emitter(path).emit 'change', path, err, info
+
+  mount = (hostname, docroot, urlroot = '/') ->
+    docroot = _path.resolve docroot
+
+    if hostname == 'file:'
+      mounted[''] = {docroot: '/', urlroot: '/'}
+    else
+      mounted[hostname] = {docroot: docroot, urlroot: urlroot}
+
+    listener.watchTree docroot
+
+  start = (port) ->
+    _app = _http.createServer(app port)
+    _app.listen port
+    sockets = _io.listen _app
+    sockets.sockets.on 'connection', connect
+
+  bootstrap = (url) ->
       ["// Load socket.io client"
       ,"var load = function(url, callback) {"
       ,"  var h = document.getElementsByTagName('head')[0]"
@@ -37,10 +124,11 @@ define (require, exports, module) ->
       ,"};"
       ,""
       ,"// Find assets and subscribe to events"
-      ,"load('http://" + url.hostname + ":" + port + "/socket.io/socket.io.js', function() {"
+      ,"load('" + url.protocol + "//" + url.host + "/socket.io/socket.io.js', function() {"
       ,"  var styles = {};"
       ,"  var images = {};"
-      ,"  var socket = io.connect('http://" + url.hostname + ":" + port + "/');"
+      ,"  var socket = io.connect('" + url.protocol + "//" + url.host + "/');"
+      ,""
       ,"  console.log(socket);"
       ,"  console.log('connected: ' + socket.connected);"
       ,"  console.log('connecting: ' + socket.connecting);"
@@ -73,73 +161,13 @@ define (require, exports, module) ->
       ,"    });"
       ,"  };"
       ,""
-      ,"  window.jQuery"
-      ,"    ? inventory(jQuery)"
-      ,"    : load('http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js',"
-      ,"        function() { inventory(jQuery); });"
-      ,"}); "].join("\n"))
-
-  emitter = (file) ->
-    emitters[file] or= new _events.EventEmitter()
-
-  resolve = (hostname, pathname) ->
-    urlroot  = mounted[hostname].urlroot
-    docroot  = mounted[hostname].docroot
-    relative = _path.relative urlroot, pathname
-    absolute = _path.join(docroot, relative)
-
-    _util.debug _util.format('resolve %s %s = %j', hostname, pathname, absolute)
-    absolute
-
-  subscribe = (socket) -> (data) ->
-    socket.get 'id', (err, id) ->
-      url      = _url.parse(data.url)
-      emitter_ = emitter resolve(url.hostname, url.pathname)
-      listener = (path) ->
-        socket.emit 'change', data
-      emitter_.on 'change', listener
-
-      sockets[id] or= {emitters: [], listeners: []}
-      sockets[id].emitters.push emitter_
-      sockets[id].listeners.push listener
-
-  disconnect = (socket) -> (data) ->
-    socket.get 'id', (err, id) ->
-      return unless sockets[id]?
-
-      for e in sockets[id].emitters
-        for l in sockets[id].listeners
-          e.removeListener 'change', l
-      delete sockets[id]
-
-  connect = (socket) ->
-    @id or= 0
-
-    socket.set 'id', @id += 1, () ->
-      socket.on 'subscribe', subscribe socket
-      socket.on 'disconnect', disconnect socket
-
-  listener = new _fswatch.Listener (path, err, info) ->
-    if info?.isDirectory()
-      listener.watchTree path
-    unless err?
-      emitter(path).emit 'change', path, err, info
-
-  mount = (hostname, docroot, urlroot = '/') ->
-    docroot = _path.resolve docroot
-
-    if hostname == 'file:'
-      mounted[''] = {docroot: '/', urlroot: '/'}
-    else
-      mounted[hostname] = {docroot: docroot, urlroot: urlroot}
-
-    listener.watchTree docroot
-
-  start = (port) ->
-    _app = _http.createServer(app port)
-    _app.listen port
-    sockets = _io.listen _app
-    sockets.sockets.on 'connection', connect
+      ,"  socket.on('helo', function() {"
+      ,"    window.jQuery"
+      ,"      ? inventory(jQuery)"
+      ,"      : load('http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js',"
+      ,"          function() { inventory(jQuery); });"
+      ,"  });"
+      ,"}); "].join("\n")
 
   exports.start       = start
   exports.mount       = mount
