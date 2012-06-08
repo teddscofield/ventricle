@@ -1,0 +1,35 @@
+#!/usr/bin/env node
+
+var _ventricle = require("../lib/ventricle")
+  , _optimist  = require("optimist")
+  , _url       = require("url")
+  , _fs        = require("fs")
+  , argv       = optimist.default({'port': 4567}).argv
+  , hosts      = argv._;
+
+
+for (var k = hosts.length; k --; ) {
+  var parts   = hosts[k].split(':')
+    , urlpath = parts[0]
+    , docroot = parts[1];
+
+  if (!urlroot || !docroot) {
+    console.error('Expected urlroot:docroot but got ' + hosts[k]);
+    process.exit(1);
+  }
+
+  if (urlpath == 'file') {
+    ventricle.mount('file:', docroot);
+  } else {
+    var url     = _url.parse('http://' + urlpath)
+      , host    = url.hostname
+      , urlroot = url.pathname || '/';
+
+    ventricle.mount(host, docroot, urlroot);
+  }
+
+}
+
+server = ventricle.start(argv.port);
+console.info('Ready on port ' + argv.port);
+console.info('  config: http://localhost:' + port + '/ventricle');
