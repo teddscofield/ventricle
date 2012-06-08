@@ -1,8 +1,9 @@
 define (require, exports, module) ->
-  _fs       = require 'fs'
-  _path     = require 'path'
-  _util     = require 'util'
-  _events   = require 'events'
+  if true
+    _fs       = require 'fs'
+    _path     = require 'path'
+    _util     = require 'util'
+    _events   = require 'events'
   emitters  = new Object
 
   # Return the existing EventEmitter or create one

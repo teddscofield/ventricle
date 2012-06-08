@@ -1,12 +1,16 @@
 define (require, exports, module) ->
-  _io       = require 'socket.io'
-  _fs       = require 'fs'
-  _url      = require 'url'
-  _http     = require 'http'
-  _util     = require 'util'
-  _path     = require 'path'
-  _events   = require 'events'
-  _fswatch  = require 'ventricle/fswatch/kqueue'
+  _fswatch  = require 'fswatch/kqueue'
+
+  if true
+    _io       = require 'socket.io'
+    _fs       = require 'fs'
+    _url      = require 'url'
+    _http     = require 'http'
+    _util     = require 'util'
+    _path     = require 'path'
+    _events   = require 'events'
+
+  console.log _http
 
   emitters = new Object
   sockets  = new Object

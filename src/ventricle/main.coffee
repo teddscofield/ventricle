@@ -1,11 +1,9 @@
-_path = require 'path'
-
 requirejs = require 'requirejs'
 requirejs.config
-  baseUrl: './lib',
+  baseUrl: __dirname
   nodeRequire: require
 
-requirejs ['ventricle/server'], (ventricle) ->
+requirejs ['server'], (ventricle) ->
   ventricle.start 8080
   ventricle.mount 'file:',     'example/htdocs'
   ventricle.mount 'macbook',   'example/htdocs'
