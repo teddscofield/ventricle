@@ -2,7 +2,7 @@ _path = require 'path'
 
 requirejs = require 'requirejs'
 requirejs.config
-  baseUrl: './js',
+  baseUrl: './lib',
   nodeRequire: require
 
 requirejs ['ventricle/server'], (ventricle) ->
