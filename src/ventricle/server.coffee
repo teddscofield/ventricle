@@ -10,8 +10,6 @@ define (require, exports, module) ->
     _path     = require 'path'
     _events   = require 'events'
 
-  console.log _http
-
   emitters = new Object
   sockets  = new Object
   mounted  = new Object
@@ -20,11 +18,13 @@ define (require, exports, module) ->
   # ask ventricle for notices when those files change
   app = (port) -> (req, res) ->
     # Parse the requested URL
-    url = _url.parse 'http://' + req.headers.host + req.url
+    url = _url.parse 'http://' + req.headers.host + req.url, true
 
-    if url.pathname == '/ventricle.js'
+    if url.pathname is '/ventricle.js'
       res.writeHead 200
       res.end bootstrap(url)
+    else if /^\/ventricle($|\/)/.test url.pathname
+      config url, req, res
     else
       path = resolve url.hostname, url.pathname
       _fs.stat path, (err, info) ->
@@ -37,26 +37,61 @@ define (require, exports, module) ->
 
   mimeType = (path) ->
     table =
-      {'html': 'text/html'
-      ,'htm':  'text/html'
-      ,'css':  'text/css'
-      ,'js':   'text/javascript'
-      ,'jpeg': 'image/jpeg'
-      ,'jpg':  'image/jpeg'
-      ,'png':  'image/png'
-      ,'gif':  'image/gif'}
+      'html': 'text/html'
+      'htm':  'text/html'
+      'css':  'text/css'
+      'js':   'text/javascript'
+      'jpeg': 'image/jpeg'
+      'jpg':  'image/jpeg'
+      'png':  'image/png'
+      'gif':  'image/gif'
     table[_path.extname(path).substring(1)] or 'data/binary'
+
+  config = (url, req, res) ->
+    hostname = url.pathname.split('/', 3)[2]
+
+    if req.method is 'GET'
+      unless hostname
+        res.writeHead 200, {'Content-Type': 'text/javascript'}
+        res.end JSON.stringify(status: 'ok', message: mounted)
+      else if mounted[hostname]
+        res.writeHead 200, {'Content-Type': 'text/javascript'}
+        res.end JSON.stringify(status: 'ok', message: mounted[hostname])
+      else
+        res.writeHead 404, {'Content-Type': 'text/javascript'}
+        res.end JSON.stringify(status: 'error', message: 'not found')
+
+    else if req.method is 'DELETE'
+      if mounted[hostname]
+        unmount hostname
+        res.writeHead 200, {'Content-Type': 'text/javascript'}
+        res.end JSON.stringify(status: 'ok', message: 'deleted')
+      else
+        res.writeHead 404, {'Content-Type': 'text/javascript'}
+        res.end JSON.stringify(status: 'error', message: 'not found')
+
+    else if req.method is 'PUT'
+      {docroot, urlroot} = url.query
+
+      unless docroot and urlroot
+        res.writeHead 400, {'Content-Type': 'text/javascript'}
+        res.end JSON.stringify(status: 'error', message: 'docroot and urlroot required')
+      else
+        mount hostname, docroot, urlroot
+        res.writeHead 201, {'Content-Type': 'text/javascript'}
+        res.end JSON.stringify(status: 'ok', message: 'created')
 
   emitter = (file) ->
     emitters[file] or= new _events.EventEmitter()
 
   resolve = (hostname, pathname) ->
-    unless mounted[hostname]?
-      _util.debug _util.format('resolve %s %s = FAIL', hostname, pathname)
-      return ""
+    unless hostname
+      urlroot = '/'
+      docroot = '/'
+    else
+      urlroot = mounted[hostname]?.urlroot
+      docroot = mounted[hostname]?.docroot
 
-    urlroot  = mounted[hostname].urlroot
-    docroot  = mounted[hostname].docroot
     relative = _path.relative urlroot, pathname
     absolute = _path.join(docroot, relative)
 
@@ -71,7 +106,10 @@ define (require, exports, module) ->
       listener = (path) -> socket.emit 'change', data
       emitter_.on 'change', listener
 
-      sockets[id] or= {emitters: [], listeners: []}
+      sockets[id] or=
+        emitters:  []
+        listeners: []
+
       sockets[id].emitters.push emitter_
       sockets[id].listeners.push listener
 
@@ -101,16 +139,28 @@ define (require, exports, module) ->
   mount = (hostname, docroot, urlroot = '/') ->
     docroot = _path.resolve docroot
 
-    if hostname == 'file:'
-      mounted[''] = {docroot: '/', urlroot: '/'}
-    else
-      mounted[hostname] = {docroot: docroot, urlroot: urlroot}
+    unmount hostname
+    mounted[hostname] =
+      docroot: docroot
+      urlroot: urlroot
 
     listener.watchTree docroot
+
+  unmount = (hostname) ->
+    return unless mounted[hostname]?
+
+    {docroot}   = mounted[hostname]
+    delete mounted[hostname]
+
+    for k, config of mounted when k is not hostname
+      return if config.docroot is docroot
+
+    listener.unwatchTree docroot
 
   start = (port) ->
     _app = _http.createServer(app port)
     _app.listen port
+
     sockets = _io.listen _app
     sockets.sockets.on 'connection', connect
 
