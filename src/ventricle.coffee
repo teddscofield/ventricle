@@ -1,3 +1,7 @@
+_fswatch = require './ventricle/fswatch'
+_server  = require './ventricle/server'
+
 exports = module.exports =
-  fswatch: require './ventricle/fswatch'
-  server:  require './ventricle/server'
+  fswatch: _fswatch
+  server:  _server
+  start:   _server.start
