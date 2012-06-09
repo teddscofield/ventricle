@@ -1,6 +1,6 @@
 (function(url) {
 
-  var JQUERY      = 'http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js'
+  var JQUERY      = '/ventricle/jquery.min.js'
     , SOCKET_IO   = url.protocol + '//' + url.host + '/socket.io/socket.io.js'
     , SOCKET_HOST = url.protocol + '//' + url.host + '/';
 
@@ -22,9 +22,10 @@
 
   // Find assets and subscribe to events
   load(SOCKET_IO, function() {
-    var styles = {};
-    var images = {};
-    var socket = io.connect(SOCKET_HOST);
+    var styles  = {};
+    var images  = {};
+    var scripts = {};
+    var socket  = io.connect(SOCKET_HOST);
 
     socket.on('helo', function() {
 
@@ -44,8 +45,8 @@
           });
 
           $('script[src]').each(function(_, e) {
-            scripts[resolveUrl(e.href)] = e;
-            socket.emit('subscribe', {url: resolveUrl(e.href)});
+            scripts[resolveUrl(e.src)] = e;
+            socket.emit('subscribe', {url: resolveUrl(e.src)});
           });
         });
       };
