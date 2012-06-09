@@ -16,21 +16,39 @@ mounted  = new Object
 app = (port) -> (req, res) ->
   # Parse the requested URL
   url = _url.parse 'http://' + req.headers.host + req.url, true
+  cfg = /^\/ventricle($|\/.*$)/.exec url.pathname
 
-  if url.pathname is '/ventricle.js'
-    res.writeHead 200
-    res.end bootstrap(url)
-  else if /^\/ventricle($|\/)/.test url.pathname
-    config url, req, res
-  else
+  unless cfg
     path = resolve url.hostname, url.pathname
-    _fs.stat path, (err, info) ->
-      unless info?.isFile()
-        res.writeHead 404, 'Not file'
-        res.end 'Not file: ' + path
-      else
-        res.writeHead 200, {'Content-Type': mimeType(path)}
-        _fs.createReadStream(path).pipe(res)
+    return sendfile res, path
+
+  resources = _path.join(__dirname, '..', '..', 'resources')
+  path      = cfg[1]
+
+  if not path or path is '/'
+    path = '/index.html'
+
+  if path is '/bootstrap.js'
+    res.writeHead 200, {'Content-Type': 'text/javascript'}
+    io = _fs.createReadStream _path.join(resources, path)
+    io.on 'end', () ->
+      res.end "({'protocol': '#{url.protocol}', 'host': '#{url.host}'});"
+    io.pipe(res, end: false)
+
+  else if /^\/api/.test path
+    config url, req, res
+
+  else
+    sendfile res, _path.join(resources, path)
+
+sendfile = (res, path) ->
+  _fs.stat path, (err, info) ->
+    unless info?.isFile()
+      res.writeHead 404, 'Not file'
+      res.end 'Not file: ' + path
+    else
+      res.writeHead 200, {'Content-Type': mimeType(path)}
+      _fs.createReadStream(path).pipe(res)
 
 mimeType = (path) ->
   table =
@@ -45,7 +63,7 @@ mimeType = (path) ->
   table[_path.extname(path).substring(1)] or 'data/binary'
 
 config = (url, req, res) ->
-  hostname = url.pathname.split('/', 3)[2]
+  hostname = url.pathname.split('/', 3)[3]
 
   if req.method is 'GET'
     unless hostname
@@ -127,11 +145,11 @@ connect = (socket) ->
     socket.on 'disconnect', disconnect socket
     socket.emit 'helo', null
 
-listener = new _fswatch.Listener (path, err, info) ->
-  if info?.isDirectory()
-    listener.watchTree path
-  unless err?
-    emitter(path).emit 'change', path, err, info
+    #listener = new _fswatch.Listener (path, err, info) ->
+    #  if info?.isDirectory()
+    #    listener.watchTree path
+    #  unless err?
+    #    emitter(path).emit 'change', path, err, info
 
 mount = (hostname, docroot, urlroot = '/') ->
   docroot = _path.resolve docroot
@@ -160,69 +178,10 @@ start = (port) ->
 
   sockets = _io.listen _app
   sockets.sockets.on 'connection', connect
+  exports
 
 bootstrap = (url) ->
-    ["// Load socket.io client"
-    ,"var load = function(url, callback) {"
-    ,"  var h = document.getElementsByTagName('head')[0]"
-    ,"    , s = document.createElement('script');"
-    ,""
-    ,"  s.setAttribute('type', 'text/javascript');"
-    ,"  s.setAttribute('src', url);"
-    ,""
-    ,"  s.onload = function() { if (callback) callback(url); };"
-    ,"  s.onreadystatechange = function() {"
-    ,"    if (callback && (s.readyState == 'loaded' || s.readyState == 'complete'))"
-    ,"      callback(url); };"
-    ,""
-    ,"  h.appendChild(s);"
-    ,"};"
-    ,""
-    ,"// Find assets and subscribe to events"
-    ,"load('" + url.protocol + "//" + url.host + "/socket.io/socket.io.js', function() {"
-    ,"  var styles = {};"
-    ,"  var images = {};"
-    ,"  var socket = io.connect('" + url.protocol + "//" + url.host + "/');"
-    ,""
-    ,"  socket.on('helo', function() {"
-    ,"    window.jQuery"
-    ,"      ? inventory(jQuery)"
-    ,"      : load('http://ajax.googleapis.com/ajax/libs/jquery/1.7.2/jquery.min.js',"
-    ,"          function() { inventory(jQuery); });"
-    ,"  });"
-    ,""
-    ,"  socket.on('change', function(message) {"
-    ,"    var a = document.createElement('a');"
-    ,"        a.href   = message.url;"
-    ,"        a.search = a.search.length"
-    ,"          ? a.search + '&ventricle=' + Math.random()"
-    ,"          : 'ventricle=' + Math.random();"
-    ,""
-    ,"    if (styles[message.url])"
-    ,"      styles[message.url].href = a.href;"
-    ,""
-    ,"    if (images[message.url])"
-    ,"      images[message.url].src = a.href;"
-    ,"  });"
-    ,""
-    ,"  var resolveUrl = function(href) {"
-    ,"    var a = $('<a href=' + href + '>...</a>');"
-    ,"        return a[0].href;"
-    ,"  };"
-    ,""
-    ,"  var inventory = function($) {"
-    ,"    $(document).ready(function() {"
-    ,"      $('link[rel=stylesheet]').each(function(n, e) {"
-    ,"        styles[resolveUrl(e.href)] = e;"
-    ,"        socket.emit('subscribe', {url: resolveUrl(e.href)});"
-    ,"      });"
-    ,"      $('img[src]').each(function(n, e) {"
-    ,"        images[resolveUrl(e.src)] = e;"
-    ,"        socket.emit('subscribe', {url: resolveUrl(e.src)});"
-    ,"      });"
-    ,"    });"
-    ,"  };"
-    ,"}); "].join("\n")
+  _
 
 exports = module.exports =
   start: start
