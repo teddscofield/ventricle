@@ -28,7 +28,7 @@ app = (port) -> (req, res) ->
   if not path or path is '/'
     path = '/index.html'
 
-  if path is '/bootstrap.js'
+  if path is '/js/ventricle.js'
     res.writeHead 200, {'Content-Type': 'text/javascript'}
     io = _fs.createReadStream _path.join(resources, path)
     io.on 'end', () ->
@@ -122,7 +122,7 @@ subscribe = (socket) -> (data) ->
     emitter_.on 'change', listener
 
     sockets[id] or=
-      emitters:  []
+      emitters:  [],
       listeners: []
 
     sockets[id].emitters.push emitter_
@@ -145,11 +145,11 @@ connect = (socket) ->
     socket.on 'disconnect', disconnect socket
     socket.emit 'helo', null
 
-    #listener = new _fswatch.Listener (path, err, info) ->
-    #  if info?.isDirectory()
-    #    listener.watchTree path
-    #  unless err?
-    #    emitter(path).emit 'change', path, err, info
+listener = new _fswatch.Listener (path, err, info) ->
+  if info?.isDirectory()
+    listener.watchTree path
+  unless err?
+    emitter(path).emit 'change', path, err, info
 
 mount = (hostname, docroot, urlroot = '/') ->
   docroot = _path.resolve docroot
