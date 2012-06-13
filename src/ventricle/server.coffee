@@ -1,6 +1,7 @@
 _fswatch  = require './fswatch'
 _io       = require 'socket.io'
 _fs       = require 'fs'
+_qs       = require 'querystring'
 _url      = require 'url'
 _http     = require 'http'
 _util     = require 'util'
@@ -46,7 +47,8 @@ mimeType = (path) ->
     'html': 'text/html'
     'htm':  'text/html'
     'css':  'text/css'
-    'js':   'text/javascript'
+    'js':   'application/javascript'
+    'json': 'application/javascript'
     'jpeg': 'image/jpeg'
     'jpg':  'image/jpeg'
     'png':  'image/png'
@@ -58,34 +60,39 @@ config = (url, req, res) ->
 
   if req.method is 'GET'
     unless hostname
-      res.writeHead 200, {'Content-Type': 'text/javascript'}
+      res.writeHead 200, {'Content-Type': 'application/javascript'}
       res.end JSON.stringify(status: 'ok', message: mounted)
     else if mounted[hostname]
-      res.writeHead 200, {'Content-Type': 'text/javascript'}
+      res.writeHead 200, {'Content-Type': 'application/javascript'}
       res.end JSON.stringify(status: 'ok', message: mounted[hostname])
     else
-      res.writeHead 404, {'Content-Type': 'text/javascript'}
+      res.writeHead 404, {'Content-Type': 'application/javascript'}
       res.end JSON.stringify(status: 'error', message: 'not found')
 
   else if req.method is 'DELETE'
     if mounted[hostname]
       unmount hostname
-      res.writeHead 200, {'Content-Type': 'text/javascript'}
+      res.writeHead 200, {'Content-Type': 'application/javascript'}
       res.end JSON.stringify(status: 'ok', message: 'deleted')
     else
-      res.writeHead 404, {'Content-Type': 'text/javascript'}
+      res.writeHead 404, {'Content-Type': 'application/javascript'}
       res.end JSON.stringify(status: 'error', message: 'not found')
 
   else if req.method is 'PUT'
-    {docroot, urlroot} = url.query
+    req.on 'data', (data) ->
+      req.body or= ''
+      req.body += data
 
-    unless docroot and urlroot
-      res.writeHead 400, {'Content-Type': 'text/javascript'}
-      res.end JSON.stringify(status: 'error', message: 'docroot and urlroot required')
-    else
-      mount hostname, docroot, urlroot
-      res.writeHead 201, {'Content-Type': 'text/javascript'}
-      res.end JSON.stringify(status: 'ok', message: 'created')
+    req.on 'end', ->
+      {docroot, urlroot} = _qs.parse req.body 
+
+      unless docroot and urlroot
+        res.writeHead 400, {'Content-Type': 'application/javascript'}
+        res.end JSON.stringify(status: 'error', message: 'docroot and urlroot required')
+      else
+        mount hostname, docroot, urlroot
+        res.writeHead 201, {'Content-Type': 'application/javascript'}
+        res.end JSON.stringify(status: 'ok', message: 'created')
 
 emitter = (file) ->
   emitters[file] or= new _events.EventEmitter()
@@ -158,8 +165,8 @@ unmount = (hostname) ->
   {docroot}   = mounted[hostname]
   delete mounted[hostname]
 
-  for k, config of mounted when k is not hostname
-    return if config.docroot is docroot
+  for k, entry of mounted when k is not hostname
+    return if entry.docroot is docroot
 
   listener.unwatchTree docroot
 
