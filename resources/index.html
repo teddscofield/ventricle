@@ -1,9 +1,171 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
   <head>
-    <script src="/ventricle/jquery.min.js"></script>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8"/>
+    <link rel="stylesheet" href="/ventricle/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="/ventricle/css/bootstrap-responsive.min.css"/>
+    <script src="/ventricle/js/jquery.min.js"></script>
+    <script src="/ventricle/js/ventricle.js"></script>
+    <script src="/ventricle/js/bootstrap.min.js"></script>
+
+    <script>
+      var createSite = function() {
+      };
+
+      var loadSites = function() {
+        var onSuccess = function(data, msg, xhr) {
+          var sites = data.message;
+          var names = [];
+          for (var name in sites)
+            if (sites.hasOwnProperty(name))
+              names.push(name);
+
+          if (names.length == 0) {
+            $('#sites').hide();
+            $('#alert-no-sites').show();
+            return;
+          }
+
+          var content = [];
+          for (var k = names.length; k --; )
+            content.push([
+              '<tr>',
+                '<td>', names[k], '</td>',
+                '<td>', sites[names[k]].urlroot, '</td>',
+                '<td>', sites[names[k]].docroot, '</td>',
+              '</tr>'].join(''));
+
+          $('#alert-no-sites').hide();
+          $('#sites tbody').html(content.join(''));
+          $('#sites').show();
+        };
+
+        var onError = function(xhr, msg, text) {
+          console.log(msg, text);
+        };
+
+        $.ajax({
+            url: '/ventricle/api'
+          , cache: false
+          , error: onError
+          , success: onSuccess
+          , dataType: 'json'
+        });
+      };
+
+      $(document).ready(function() { loadSites(); });
+    </script>
+
   </head>
 
   <body>
+
+    <div class="navbar">
+      <div class="navbar-inner">
+        <div class="container">
+          <a class="brand">Ventricle</a>
+          <ul class="nav">
+            <li class="active"><a href="#new" data-toggle="tab">New Site</a></li>
+            <li><a href="#list" data-toggle="tab">List Sites</a></li>
+            <li><a href="#repl" data-toggle="tab">REPL</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="tab-content">
+        <div class="tab-pane active" id="new">
+          <div class="page-header">
+            <h1>New Site</h1>
+          </div>
+
+          <div class="alerts">
+            <div class="alert alert-success">
+              <button class="close" data-dismiss="alert">×</button>
+              <span class="message"></span>
+            </div>
+
+            <div class="alert alert-error">
+              <button class="close" data-dismiss="alert">×</button>
+              <span class="message"></span>
+            </div>
+          </div>
+
+          <form class="form-horizontal">
+            <fieldset>
+              <div class="control-group">
+                <label class="control-label">Hostname</label>
+                <div class="controls">
+                  <input type="text" placeholder="localhost"/>
+                  <p class="help-block">This is the ...</p>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">URL Root</label>
+                <div class="controls">
+                  <input type="text" placeholder="/"/>
+                  <p class="help-block">This is the ...</p>
+                </div>
+              </div>
+
+              <div class="control-group">
+                <label class="control-label">Document Root</label>
+                <div class="controls">
+                  <div class="input-append">
+                    <input type="text" placeholder="/Users/kputnam/Sites/kputnam.github.com"/>
+                    <button type="button" class="btn"><i class="icon-folder-open"></i> Test</button>
+                  </div>
+                  <p class="help-block">This is the ...</p>
+                </div>
+              </div>
+
+            </fieldset>
+
+            <button type="submit" class="btn btn-primary">Create</button>
+          </form>
+        </div>
+
+        <div class="tab-pane" id="list">
+          <div class="page-header">
+            <h1>List Sites</h1>
+          </div>
+
+          <div class="alerts">
+            <div class="alert alert-success">
+              <button class="close" data-dismiss="alert">×</button>
+              <span class="message"></span>
+            </div>
+
+            <div class="alert alert-info">
+              <button class="close" data-dismiss="alert">×</button>
+              <span class="message"></span>
+            </div>
+          </div>
+
+          <table id="sites" class="table table-striped">
+            <thead>
+              <th>Hostname</th>
+              <th>URL Root</th>
+              <th>Document Root</th>
+            </thead>
+            <tbody>
+              <tr>
+                <td>file</td>
+                <td>/</td>
+                <td>/Users/kputnam/Sites/kputnam.github.com</td>
+              </tr>
+              <tr>
+                <td>localhost</td>
+                <td>/ventricle</td>
+                <td>/Users/kputnam/Sites/kputnam.github.com</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
   </body>
 </html>
