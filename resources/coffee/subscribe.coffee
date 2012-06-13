@@ -51,7 +51,7 @@ initialize = (url) ->
       if scripts[message.url]?
         window.location.reload true
 
-      if window.location is message.url
+      if window.location.href is message.url
         window.location.reload true
 
     # Connection is alive
