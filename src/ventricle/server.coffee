@@ -11,33 +11,24 @@ emitters = new Object
 sockets  = new Object
 mounted  = new Object
 
-# Send a script to inventory any <link> elements and then
-# ask ventricle for notices when those files change
 app = (port) -> (req, res) ->
+  _util.debug _util.format('> http://%s%s', req.headers.host, req.url)
+
   # Parse the requested URL
   url = _url.parse 'http://' + req.headers.host + req.url, true
   cfg = /^\/ventricle($|\/.*$)/.exec url.pathname
 
   unless cfg
+    # Not part of the configuration page
     path = resolve url.hostname, url.pathname
     return sendfile res, path
 
   resources = _path.join(__dirname, '..', '..', 'resources')
   path      = cfg[1]
+  path      = '/index.html' if not path or path is '/'
 
-  if not path or path is '/'
-    path = '/index.html'
-
-  if path is '/js/ventricle.js'
-    res.writeHead 200, {'Content-Type': 'text/javascript'}
-    io = _fs.createReadStream _path.join(resources, path)
-    io.on 'end', () ->
-      res.end "({'protocol': '#{url.protocol}', 'host': '#{url.host}'});"
-    io.pipe(res, end: false)
-
-  else if /^\/api/.test path
+  if /^\/sites/.test path
     config url, req, res
-
   else
     sendfile res, _path.join(resources, path)
 
@@ -63,7 +54,7 @@ mimeType = (path) ->
   table[_path.extname(path).substring(1)] or 'data/binary'
 
 config = (url, req, res) ->
-  hostname = url.pathname.split('/', 3)[3]
+  hostname = url.pathname.split('/', 4)[3]
 
   if req.method is 'GET'
     unless hostname
@@ -110,7 +101,7 @@ resolve = (hostname, pathname) ->
   relative = _path.relative urlroot, pathname
   absolute = _path.join(docroot, relative)
 
-  _util.debug _util.format('resolve %s %s = %j', hostname, pathname, absolute)
+  #util.debug _util.format('resolve %s %s = %j', hostname, pathname, absolute)
   absolute
 
 subscribe = (socket) -> (data) ->
