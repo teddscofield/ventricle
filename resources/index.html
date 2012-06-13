@@ -10,6 +10,7 @@
     <script src="/ventricle/js/bootstrap.min.js"></script>
     <script>
       $(document).ready(function() {
+        window.configure.loadSites();
         $('#btn-edit-http').click(function(e) { e.preventDefault(); window.configure.createSite('#edit-http'); });
         $('#btn-edit-file').click(function(e) { e.preventDefault(); window.configure.createSite('#edit-file'); });
       });
