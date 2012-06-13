@@ -2,16 +2,61 @@
 activeTab = (tabContent = 'div.container > div.tab-content') ->
   $ '> div.tab-pane.active', tabContent
 
-mkAlert = (parent, klass, message) ->
+knownSites = []
+
+createAlert = (parent, klass, message) ->
   parent = $ parent
   parent.append "<div class='alert #{klass}'><button type='button' class='close' data-dismiss='alert'>&times</button>#{message}</div>"
 
-createSite = () ->
+clearAlerts = (parent) ->
+  $(parent).empty()
 
-deleteSite = () ->
+createSite = (form) ->
+  hostname = $('input[name=hostname]', form).val()
+  urlroot  = $('input[name=urlroot]', form).val()
+  docroot  = $('input[name=docroot]', form).val()
+
+  onError = (xhr, msg, text) ->
+    console.log 'onError', xhr, msg, text
+
+  onSuccess = (data, msg, xhr) ->
+    link = $ 'ul.nav a[href="#list"]'
+    link.tab 'show'
+    
+    clearAlerts '#list div.alerts'
+    createAlert '#list div.alerts', 'alert-success', 'Successfully created <code>' + hostname + '</code>'
+    loadSites()
+
+  $.ajax
+    url: '/ventricle/sites/' + hostname
+    type: 'PUT'
+    data:
+      urlroot: urlroot
+      docroot: docroot
+    cache: false
+    error: onError
+    success: onSuccess
+    dataType: 'json'
+
+deleteSite = (hostname) ->
+
+  onError = (xhr, msg, text) ->
+    console.log 'onError', xhr, msg, text
+
+  onSuccess = (data, msg, xhr) ->
+    clearAlerts '#list div.alerts'
+    createAlert '#list div.alerts', 'alert-success', 'Successfully deleted <code>' + hostname + '</code>'
+    loadSites()
+
+  $.ajax
+    url: '/ventricle/sites/' + hostname
+    type: 'DELETE'
+    cache: false
+    error: onError
+    success: onSuccess
+    dataType: 'json'
 
 loadSites = () ->
-  
   onError = (xhr, msg, text) ->
     console.log 'onError', xhr, msg, text
 
@@ -20,9 +65,15 @@ loadSites = () ->
     tbody = []
 
     $('#list table.sites').hide()
-    $('#list div.alerts').empty()
+
+    knownSites.length = 0
 
     for name, options of sites
+      knownSites.push
+        hostname: name
+        urlroot: options.urlroot
+        docroot: options.docroot
+
       tbody.push """
       <tr>
         <td>#{name}</td>
@@ -40,7 +91,7 @@ loadSites = () ->
       $('#list table.sites').show()
     else
       $('#list table.sites').hide()
-      mkAlert '#list div.alerts', 'alert-info', 'No sites have been configured. Click "New/Edit Site" to create one.'
+      createAlert '#list div.alerts', 'alert-info', 'No sites have been configured. Click "New/Edit Site" to create one.'
 
   $.ajax
     url: '/ventricle/sites'
@@ -54,4 +105,4 @@ window.configure =
   createSite: createSite
   deleteSite: deleteSite
   loadSites:  loadSites
-  mkAlert:    mkAlert
+  knownSites: knownSites
