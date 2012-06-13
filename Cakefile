@@ -39,7 +39,8 @@ th = (f, args...) ->
 ###########################################################################
 
 task 'compile', (k) ->
-  sh 'coffee', '-c', '-o', 'lib', 'src', k
+  sh 'coffee', '-c', '-o', 'lib', 'src',
+  th sh, 'coffee', '-c', '-o', 'resources/js', 'resources/coffee', k
 
 task 'concat', (k) ->
   r = require 'requirejs'
