@@ -99,16 +99,20 @@ emitter = (file) ->
 
 resolve = (hostname, pathname) ->
   unless hostname
+    # file://...
     urlroot = '/'
     docroot = '/'
-  else
-    urlroot = mounted[hostname]?.urlroot
-    docroot = mounted[hostname]?.docroot
+  else if not mounted[hostname]
+    return null
+
+  urlroot = mounted[hostname]?.urlroot
+  docroot = mounted[hostname]?.docroot
 
   relative = _path.relative urlroot, pathname
   absolute = _path.join(docroot, relative)
+  _util.debug _util.format('relative: %s', relative)
+  _util.debug _util.format('absolute: %s', absolute)
 
-  #util.debug _util.format('resolve %s %s = %j', hostname, pathname, absolute)
   absolute
 
 subscribe = (socket) -> (data) ->

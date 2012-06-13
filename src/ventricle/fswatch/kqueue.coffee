@@ -8,19 +8,19 @@ emitters  = new Object
 emitter = (path) ->
   unless emitters[path]?
     try
-      _util.debug _util.format('watch %s', path)
+      #util.debug _util.format('watch %s', path)
       emitters[path]   = new _events.EventEmitter()
       emitters[path].w = _fs.watch path, (event, file) ->
         if e = emitters[path]
           _fs.stat path, (err, info) ->
             unless err?.code == 'ENOENT'
-              _util.debug _util.format('emit %s %s', event, path)
+              #util.debug _util.format('emit %s %s', event, path)
               e.emit event, path, err, info
   emitters[path]
 
 unlisten = (path, callback) ->
   if e = emitters[path]
-    _util.debug _util.format('unlisten %s', path)
+    #util.debug _util.format('unlisten %s', path)
     if callback
       e.removeListener 'change', callback
       e.removeListener 'rename', callback
@@ -42,7 +42,7 @@ class Listener
 
   watchFile: (path) ->
     return if @listening[path]
-    _util.debug _util.format('watchFile %s', path)
+    #util.debug _util.format('watchFile %s', path)
     @listening[path] = true
 
     e = emitter path
@@ -58,7 +58,7 @@ class Listener
     @listening[dir] or= new Object
 
     updateDir = (quiet) => () =>
-      _util.debug _util.format('compareDir %s', dir)
+      #util.debug _util.format('compareDir %s', dir)
       complete = 0
       current  = new Object
 
@@ -74,24 +74,24 @@ class Listener
                 @listening[dir] = current) path
 
     compareFile = (path, current, quiet) =>
-      _util.debug _util.format(' compareFile %s', path)
+      #util.debug _util.format(' compareFile %s', path)
       previous = @listening[dir]
       a = current.mtime.getTime()
       b = previous[path]?.mtime?.getTime()
 
       if not b
-        _util.debug _util.format('  created %s', path)
+        #util.debug _util.format('  created %s', path)
         this.watchFile path
         @callback path, null, current unless quiet
       else if current.ino is not previous[path].ino
-        _util.debug _util.format('  replaced %s', path)
+        #util.debug _util.format('  replaced %s', path)
         @callback path, null, current
 
     checkRemoved = (current) =>
-      _util.debug _util.format(' checkRemoved %s', dir)
+      #util.debug _util.format(' checkRemoved %s', dir)
       for path, info of @listening[dir]
         unless current[path]
-          _util.debug _util.format('  removed %s', path)
+          #util.debug _util.format('  removed %s', path)
           this.unwatchFile path
           @callback path, true, null
 
