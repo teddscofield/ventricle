@@ -12,11 +12,13 @@ emitters = new Object
 sockets  = new Object
 mounted  = new Object
 
-jsonOk = (res, code, message) ->
-  null
+jsOk = (res, message, code = 200) ->
+  res.writeHead code, {'Content-Type': mime 'response.js'}
+  res.end JSON.stringify(status: 'ok', message: message)
 
-jsonError = (res, code, message) ->
-  null
+jsErr = (res, message, code = 400) ->
+  res.writeHead code, {'Content-Type': mime 'response.js'}
+  res.end JSON.stringify(status: 'error', message: message)
 
 app = (port) -> (req, res) ->
   _util.debug _util.format('> http://%s%s', req.headers.host, req.url)
@@ -35,7 +37,7 @@ app = (port) -> (req, res) ->
   urlpath   = '/index.html' if not urlpath or urlpath is '/'
 
   if test = /^\/checkdir\/(.*)$/.exec urlpath
-    checkdir res, '/' + test[1]
+    checkdir res, _path.join('/' + test[1])
 
   else if test = /^\/checkurl\/([^./]+)(.*)$/.exec urlpath
     checkurl res, test[1], test[2]
@@ -49,27 +51,21 @@ app = (port) -> (req, res) ->
 checkdir = (res, fspath) ->
   _fs.stat fspath, (err, info) ->
     if info?.isDirectory()
-      res.writeHead 200, {'Content-Type: application/javascript'}
-      res.end JSON.stringify(status: 'ok', message: {path: fspath})
+      jsOk res, path: fspath
     else if err?
-      res.writeHead 200, {'Content-Type: application/javascript'}
-      res.end JSON.stringify(status: 'error', message: {path: fspath, code: err.code})
+      jsOk res, path: fspath, code: err.code
     else
-      res.writeHead 200, {'Content-Type: application/javascript'}
-      res.end JSON.stringify(status: 'error', message: {path: fspath, code: 'ENOTDIR'})
+      jsOk res, path: fspath, code: 'ENOTDIR'
 
 checkurl = (res, host, urlpath) ->
   fspath = resolve host, urlpath
   _fs.stat fspath, (err, info) ->
     if info?.isFile()
-      res.writeHead 200, {'Content-Type: application/javascript'}
-      res.end JSON.stringify(status: 'ok', message: {path: fspath})
+      jsOk res, message: {path: fspath}
     else if err?
-      res.writeHead 200, {'Content-Type: application/javascript'}
-      res.end JSON.stringify(status: 'error', message: {path: fspath, code: err.code})
+      jsErr res, 400, path: fspath, code: err.code
     else
-      res.writeHead 200, {'Content-Type: application/javascript'}
-      res.end JSON.stringify(status: 'error', message: {path: fspath, code: 'EISDIR'})
+      jsErr res, 400, path: fspath, code: 'EISDIR'
 
 sendfile = (res, fspath) ->
   _fs.stat fspath, (err, info) ->
@@ -77,7 +73,7 @@ sendfile = (res, fspath) ->
       res.writeHead 404, 'Not file'
       res.end 'Not file: ' + fspath
     else
-      res.writeHead 200, {'Content-Type': mimeType(fspath)}
+      res.writeHead 200, {'Content-Type': mime(fspath)}
       _fs.createReadStream(fspath).pipe(res)
 
 config = (res, req, url) ->
@@ -85,23 +81,18 @@ config = (res, req, url) ->
 
   if req.method is 'GET'
     unless hostname
-      res.writeHead 200, {'Content-Type': 'application/javascript'}
-      res.end JSON.stringify(status: 'ok', message: mounted)
+      jsOk res, mounted
     else if mounted[hostname]
-      res.writeHead 200, {'Content-Type': 'application/javascript'}
-      res.end JSON.stringify(status: 'ok', message: mounted[hostname])
+      jsOk res, mounted[hostname]
     else
-      res.writeHead 404, {'Content-Type': 'application/javascript'}
-      res.end JSON.stringify(status: 'error', message: 'not found')
+      jsErr res, 'not found', 404
 
   else if req.method is 'DELETE'
     if mounted[hostname]
       unmount hostname
-      res.writeHead 200, {'Content-Type': 'application/javascript'}
-      res.end JSON.stringify(status: 'ok', message: 'deleted')
+      jsOk res, 'deleted'
     else
-      res.writeHead 404, {'Content-Type': 'application/javascript'}
-      res.end JSON.stringify(status: 'error', message: 'not found')
+      jsOk res, 'not found', 404
 
   else if req.method is 'PUT'
     req.on 'data', (data) ->
@@ -112,14 +103,12 @@ config = (res, req, url) ->
       {docroot, urlroot} = _qs.parse req.body 
 
       unless docroot and urlroot
-        res.writeHead 400, {'Content-Type': 'application/javascript'}
-        res.end JSON.stringify(status: 'error', message: 'docroot and urlroot required')
+        jsErr res, 'docroot and urlroot required'
       else
         mount hostname, docroot, urlroot
-        res.writeHead 201, {'Content-Type': 'application/javascript'}
-        res.end JSON.stringify(status: 'ok', message: 'created')
+        jsOk res, 'created', 201
 
-mimeType = (path) ->
+mime = (path) ->
   table =
     'html': 'text/html'
     'htm':  'text/html'
