@@ -8,7 +8,7 @@ createAlert = (parent, klass, message) ->
   parent = $ 'div.alerts', parent
   parent.append "<div class='alert #{klass}'><button type='button' class='close' data-dismiss='alert'>&times</button>#{message}</div>"
 
-clearAlerts = (parent, child) ->
+removeAlert = (parent, child) ->
   if child
     # Remove matching alerts
     $(child, parent).remove()
@@ -29,7 +29,7 @@ createSite = (form) ->
     link = $ 'ul.nav a[href="#list"]'
     link.tab 'show'
     
-    clearAlerts '#list'
+    removeAlert '#list'
     createAlert '#list', 'alert-success', 'Successfully created <code>' + hostname + '</code>'
 
   $.ajax
@@ -48,7 +48,7 @@ deleteSite = (hostname) ->
     console.log 'onError', xhr, msg, text
 
   onSuccess = (data, msg, xhr) ->
-    clearAlerts '#list'
+    removeAlert '#list'
     createAlert '#list', 'alert-success', 'Successfully deleted <code>' + hostname + '</code>'
     loadSites()
 
@@ -63,17 +63,24 @@ deleteSite = (hostname) ->
 checkDir = (fspath, tab) ->
   onError = (xhr, msg, text) ->
     data  = JSON.parse xhr.responseText
-    clearAlerts '#edit', '.doc-root-err'
-    clearAlerts '#edit', '.doc-root-ok'
+    removeAlert '#edit', '.doc-root-err'
+    removeAlert '#edit', '.doc-root-ok'
 
     createAlert '#edit', 'alert-error doc-root-err', 'Document Root: ' + data.message.code
 
   onSuccess = (data, msg, xhr) ->
-    clearAlerts '#edit', '.doc-root-err'
+    message = data.message
 
-    # Clear alert 'Document Root confirmed'
-    unless $('#edit div.alert.doc-root-ok').length
-      createAlert '#edit', 'alert-info doc-root-ok', 'Document Root confirmed'
+    if (message.files?.length)
+      message.files.sort()
+      files  = message.files.slice(0, 8).join(', ')
+      files += ', ...' if message.files.length > 8
+    else
+      files = 'empty directory'
+
+    removeAlert '#edit', '.doc-root-err'
+    removeAlert '#edit', '.doc-root-ok'
+    createAlert '#edit', 'alert-info doc-root-ok', 'Document Root OK: ' + files
 
   if fspath
     # Clear alert 'Document Root is required'

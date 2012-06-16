@@ -52,19 +52,17 @@ app = (port) -> (req, res) ->
     sendfile res, _path.join(resources, urlpath)
 
 checkdir = (res, fspath) ->
-  _fs.stat fspath, (err, info) ->
-    if info?.isDirectory()
-      jsOk res, path: fspath
-    else if err?
+  _fs.readdir fspath, (err, files) ->
+    if err?
       jsErr res, path: fspath, code: err.code, 404
     else
-      jsErr res, path: fspath, code: 'ENOTDIR', 404
+      jsOk res, path: fspath, files: files
 
 checkurl = (res, host, urlpath) ->
   fspath = resolve host, urlpath
   _fs.stat fspath, (err, info) ->
     if info?.isFile()
-      jsOk res, message: {path: fspath}
+      jsOk res, path: fspath
     else if err?
       jsErr res, path: fspath, code: err.code, 404
     else
