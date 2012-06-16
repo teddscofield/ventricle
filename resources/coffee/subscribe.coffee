@@ -18,7 +18,6 @@ load = (url, callback) ->
   h.appendChild s
 
 initialize = (url) ->
-  JQUERY      = '/ventricle/jquery.min.js'
   SOCKET_IO   = url.protocol + '//' + url.host + '/socket.io/socket.io.js'
   SOCKET_HOST = url.protocol + '//' + url.host + '/'
 
@@ -56,32 +55,32 @@ initialize = (url) ->
 
     # Connection is alive
     socket.on 'helo', ->
-      inventory = ($) ->
-        $ ->
-          # HTML
-          socket.emit 'subscribe', url: resolveUrl(window.location)
+      $ ->
+        # HTML
+        socket.emit 'subscribe', url: resolveUrl(window.location)
 
-          # Images
-          $('img[src]').each (_, e) ->
-            images[resolveUrl e.src] = e
-            socket.emit 'subscribe', url: resolveUrl e.src
+        # Images
+        $('img[src]').each (_, e) ->
+          images[resolveUrl e.src] = e
+          socket.emit 'subscribe', url: resolveUrl e.src
 
-          # Stylesheets
-          $('link[rel=stylesheet][href]').each (_, e) ->
-            styles[resolveUrl e.href] = e
-            socket.emit 'subscribe', url: resolveUrl e.href
+        # Stylesheets
+        $('link[rel=stylesheet][href]').each (_, e) ->
+          styles[resolveUrl e.href] = e
+          socket.emit 'subscribe', url: resolveUrl e.href
 
-          # JavaScript
-          $('script[src]').each (_, e) ->
-            scripts[resolveUrl e.src] = e
-            socket.emit 'subscribe', url: resolveUrl e.src
+        # JavaScript
+        $('script[src]').each (_, e) ->
+          scripts[resolveUrl e.src] = e
+          socket.emit 'subscribe', url: resolveUrl e.src
 
-      if window.jQuery?
-        inventory jQuery
-      else
-        load JQUERY, -> inventory jQuery
+bootstrap = () ->
+  # Use the script tag from which we were bjorn to learn our hostname
+  for script in document.getElementsByTagName 'script'
+    if '/ventricle/js/subscribe.js' is resolveUrl(script.src, 'pathname')
+      initialize resolveUrl(script.src, false)
 
-# Use the script tag from which we were bjorn to learn our hostname
-for script in document.getElementsByTagName 'script'
-  if '/ventricle/js/subscribe.js' is resolveUrl(script.src, 'pathname')
-    initialize resolveUrl(script.src, false)
+if window.jQuery?
+  bootstrap jQuery
+else
+  load '/ventricle/js/jquery.min.js', -> bootstrap jQuery
