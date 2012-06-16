@@ -28,7 +28,10 @@ app = (port) -> (req, res) ->
 
   unless test = /^\/ventricle($|\/.*$)/.exec url.pathname
     # Not part of the configuration page
-    fspath = resolve url.hostname, url.pathname
+    unless fspath = resolve url.hostname, url.pathname
+      res.writeHead 404, 'Not file'
+      return res.end 'Not file'
+
     return sendfile res, fspath
 
   # Dealing with config page from here down
@@ -53,9 +56,9 @@ checkdir = (res, fspath) ->
     if info?.isDirectory()
       jsOk res, path: fspath
     else if err?
-      jsOk res, path: fspath, code: err.code
+      jsErr res, path: fspath, code: err.code, 404
     else
-      jsOk res, path: fspath, code: 'ENOTDIR'
+      jsErr res, path: fspath, code: 'ENOTDIR', 404
 
 checkurl = (res, host, urlpath) ->
   fspath = resolve host, urlpath
@@ -63,9 +66,9 @@ checkurl = (res, host, urlpath) ->
     if info?.isFile()
       jsOk res, message: {path: fspath}
     else if err?
-      jsErr res, 400, path: fspath, code: err.code
+      jsErr res, path: fspath, code: err.code, 404
     else
-      jsErr res, 400, path: fspath, code: 'EISDIR'
+      jsErr res, path: fspath, code: 'EISDIR', 404
 
 sendfile = (res, fspath) ->
   _fs.stat fspath, (err, info) ->
@@ -137,17 +140,26 @@ resolve = (hostname, pathname) ->
 
   relative = _path.relative urlroot, pathname
   absolute = _path.join(docroot, relative)
-  _util.debug _util.format('relative: %s', relative)
-  _util.debug _util.format('absolute: %s', absolute)
 
-  absolute
+  if relative.slice(0, 2) == '..'
+    _util.debug _util.format('  relative: %s', relative)
+    _util.debug _util.format('  outsider: %s', absolute)
+  else
+    _util.debug _util.format('  relative: %s', relative)
+    _util.debug _util.format('  absolute: %s', absolute)
+
+    absolute
 
 subscribe = (socket) -> (data) ->
   socket.get 'id', (err, id) ->
-    _util.debug _util.format('SUBSCRIBE %j', data)
     url      = _url.parse(data.url)
-    emitter_ = emitter resolve(url.hostname, url.pathname)
-    listener = (fspath) -> socket.emit 'change', data
+    fspath   = resolve(url.hostname, url.pathname)
+    unless fspath
+      return _util.debug _util.format('IGNORED %j', data)
+
+    _util.debug _util.format('SUBSCRIBE %j', data)
+    emitter_ = emitter fspath
+    listener =  -> socket.emit 'change', data
     emitter_.on 'change', listener
 
     sockets[id] or=

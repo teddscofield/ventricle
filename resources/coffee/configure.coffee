@@ -5,11 +5,16 @@ activeTab = (tabContent = 'div.container > div.tab-content') ->
 knownSites = []
 
 createAlert = (parent, klass, message) ->
-  parent = $ parent
+  parent = $ 'div.alerts', parent
   parent.append "<div class='alert #{klass}'><button type='button' class='close' data-dismiss='alert'>&times</button>#{message}</div>"
 
-clearAlerts = (parent) ->
-  $(parent).empty()
+clearAlerts = (parent, child) ->
+  if child
+    # Remove matching alerts
+    $(child, parent).remove()
+  else
+    # Remove all alerts
+    $(parent).empty()
 
 createSite = (form) ->
   hostname = $('input[name=hostname]', form).val()
@@ -20,12 +25,12 @@ createSite = (form) ->
     console.log 'onError', xhr, msg, text
 
   onSuccess = (data, msg, xhr) ->
+    loadSites()
     link = $ 'ul.nav a[href="#list"]'
     link.tab 'show'
     
-    clearAlerts '#list div.alerts'
-    createAlert '#list div.alerts', 'alert-success', 'Successfully created <code>' + hostname + '</code>'
-    loadSites()
+    clearAlerts '#list'
+    createAlert '#list', 'alert-success', 'Successfully created <code>' + hostname + '</code>'
 
   $.ajax
     url: '/ventricle/sites/' + hostname
@@ -39,13 +44,12 @@ createSite = (form) ->
     dataType: 'json'
 
 deleteSite = (hostname) ->
-
   onError = (xhr, msg, text) ->
     console.log 'onError', xhr, msg, text
 
   onSuccess = (data, msg, xhr) ->
-    clearAlerts '#list div.alerts'
-    createAlert '#list div.alerts', 'alert-success', 'Successfully deleted <code>' + hostname + '</code>'
+    clearAlerts '#list'
+    createAlert '#list', 'alert-success', 'Successfully deleted <code>' + hostname + '</code>'
     loadSites()
 
   $.ajax
@@ -55,6 +59,33 @@ deleteSite = (hostname) ->
     error: onError
     success: onSuccess
     dataType: 'json'
+
+checkDir = (fspath, tab) ->
+  onError = (xhr, msg, text) ->
+    data  = JSON.parse xhr.responseText
+    clearAlerts '#edit', '.doc-root-err'
+    clearAlerts '#edit', '.doc-root-ok'
+
+    createAlert '#edit', 'alert-error doc-root-err', 'Document Root: ' + data.message.code
+
+  onSuccess = (data, msg, xhr) ->
+    clearAlerts '#edit', '.doc-root-err'
+
+    # Clear alert 'Document Root confirmed'
+    unless $('#edit div.alert.doc-root-ok').length
+      createAlert '#edit', 'alert-info doc-root-ok', 'Document Root confirmed'
+
+  if fspath
+    # Clear alert 'Document Root is required'
+    alert = $ '#edit div.alert.doc-root-req'
+    alert.remove()
+
+    $.ajax
+      url:      '/ventricle/checkdir/' + fspath
+      cache:    false
+      error:    onError
+      success:  onSuccess
+      dataType: 'json'
 
 loadSites = () ->
   onError = (xhr, msg, text) ->
@@ -91,7 +122,7 @@ loadSites = () ->
       $('#list table.sites').show()
     else
       $('#list table.sites').hide()
-      createAlert '#list div.alerts', 'alert-info', 'No sites have been configured. Click "New/Edit Site" to create one.'
+      createAlert '#list', 'alert-info', 'No sites have been configured. Click "New/Edit Site" to create one.'
 
   $.ajax
     url: '/ventricle/sites'
@@ -102,6 +133,10 @@ loadSites = () ->
 
 initialize = () ->
   loadSites()
+
+  inputs = $ 'input[name="docroot"]'
+  inputs.bind 'blur', (e) ->
+    checkDir e.srcElement.value, activeTab '#edit-http div.tab-content'
 
   # Bind submit button
   httpSubmit = $ '#btn-edit-http'
