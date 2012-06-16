@@ -52,11 +52,31 @@ app = (port) -> (req, res) ->
     sendfile res, _path.join(resources, urlpath)
 
 checkdir = (res, fspath) ->
-  _fs.readdir fspath, (err, files) ->
+  _fs.readdir fspath, (err, children) ->
     if err?
       jsErr res, path: fspath, code: err.code, 404
     else
-      jsOk res, path: fspath, files: files
+      files = []
+      dirs  = []
+      count = 0
+
+      unless children.length
+        jsOk res, path: fspath, files: files, dirs: dirs
+
+      for child in children
+        if child[0] is '.'
+          if (count += 1) is children.length
+            jsOk res, path: fspath, files: filse, dirs: dirs
+        else
+          ((child) ->
+            _fs.stat _path.join(fspath, child), (err, info) ->
+              if info?.isDirectory()
+                dirs.push child
+              else if info?.isFile()
+                files.push child
+
+              if (count += 1) is children.length
+                jsOk res, path: fspath, files: files, dirs: dirs)(child)
 
 checkurl = (res, host, urlpath) ->
   fspath = resolve host, urlpath

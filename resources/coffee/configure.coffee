@@ -64,28 +64,16 @@ checkDir = (fspath, tab) ->
   onError = (xhr, msg, text) ->
     data  = JSON.parse xhr.responseText
     removeAlert '#edit', '.doc-root-err'
-    removeAlert '#edit', '.doc-root-ok'
-
     createAlert '#edit', 'alert-error doc-root-err', 'Document Root: ' + data.message.code
 
   onSuccess = (data, msg, xhr) ->
     message = data.message
-
-    if (message.files?.length)
-      message.files.sort()
-      files  = message.files.slice(0, 8).join(', ')
-      files += ', ...' if message.files.length > 8
-    else
-      files = 'empty directory'
-
     removeAlert '#edit', '.doc-root-err'
-    removeAlert '#edit', '.doc-root-ok'
-    createAlert '#edit', 'alert-info doc-root-ok', 'Document Root OK: ' + files
 
-  if fspath
-    # Clear alert 'Document Root is required'
-    alert = $ '#edit div.alert.doc-root-req'
-    alert.remove()
+  unless fspath
+    removeAlert '#edit', '.doc-root-err'
+  else
+    removeAlert '#edit', '.doc-root-req'
 
     $.ajax
       url:      '/ventricle/checkdir/' + fspath
@@ -93,6 +81,29 @@ checkDir = (fspath, tab) ->
       error:    onError
       success:  onSuccess
       dataType: 'json'
+
+readDir = (results) ->
+  unless this.query[this.query.length - 1] is '/'
+    return []
+
+  onError = (xhr, msg, text) ->
+    console.log xhr.responseText
+
+  onSuccess = (data, msg, xhr) =>
+    choices = data.message.dirs.sort()
+
+    results.length = 0
+    results.push choices...
+
+  $.ajax
+    url:      '/ventricle/checkdir' + this.query
+    cache:    false
+    async:    false
+    error:    onError
+    success:  onSuccess
+    dataType: 'json'
+
+  results
 
 loadSites = () ->
   onError = (xhr, msg, text) ->
@@ -142,6 +153,10 @@ initialize = () ->
   loadSites()
 
   inputs = $ 'input[name="docroot"]'
+  inputs.typeahead
+    items:  20
+    sorter: readDir
+
   inputs.bind 'blur', (e) ->
     checkDir e.srcElement.value, activeTab '#edit-http div.tab-content'
 
