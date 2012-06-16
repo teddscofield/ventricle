@@ -12,50 +12,75 @@ emitters = new Object
 sockets  = new Object
 mounted  = new Object
 
+jsonOk = (res, code, message) ->
+  null
+
+jsonError = (res, code, message) ->
+  null
+
 app = (port) -> (req, res) ->
   _util.debug _util.format('> http://%s%s', req.headers.host, req.url)
 
   # Parse the requested URL
   url = _url.parse 'http://' + req.headers.host + req.url, true
-  cfg = /^\/ventricle($|\/.*$)/.exec url.pathname
 
-  unless cfg
+  unless test = /^\/ventricle($|\/.*$)/.exec url.pathname
     # Not part of the configuration page
-    path = resolve url.hostname, url.pathname
-    return sendfile res, path
+    fspath = resolve url.hostname, url.pathname
+    return sendfile res, fspath
 
+  # Dealing with config page from here down
   resources = _path.join(__dirname, '..', '..', 'resources')
-  path      = cfg[1]
-  path      = '/index.html' if not path or path is '/'
+  urlpath   = test[1]
+  urlpath   = '/index.html' if not urlpath or urlpath is '/'
 
-  if /^\/sites/.test path
-    config url, req, res
+  if test = /^\/checkdir\/(.*)$/.exec urlpath
+    checkdir res, '/' + test[1]
+
+  else if test = /^\/checkurl\/([^./]+)(.*)$/.exec urlpath
+    checkurl res, test[1], test[2]
+
+  else if /^\/sites/.test urlpath
+    config res, req, url
+
   else
-    sendfile res, _path.join(resources, path)
+    sendfile res, _path.join(resources, urlpath)
 
-sendfile = (res, path) ->
-  _fs.stat path, (err, info) ->
+checkdir = (res, fspath) ->
+  _fs.stat fspath, (err, info) ->
+    if info?.isDirectory()
+      res.writeHead 200, {'Content-Type: application/javascript'}
+      res.end JSON.stringify(status: 'ok', message: {path: fspath})
+    else if err?
+      res.writeHead 200, {'Content-Type: application/javascript'}
+      res.end JSON.stringify(status: 'error', message: {path: fspath, code: err.code})
+    else
+      res.writeHead 200, {'Content-Type: application/javascript'}
+      res.end JSON.stringify(status: 'error', message: {path: fspath, code: 'ENOTDIR'})
+
+checkurl = (res, host, urlpath) ->
+  fspath = resolve host, urlpath
+  _fs.stat fspath, (err, info) ->
+    if info?.isFile()
+      res.writeHead 200, {'Content-Type: application/javascript'}
+      res.end JSON.stringify(status: 'ok', message: {path: fspath})
+    else if err?
+      res.writeHead 200, {'Content-Type: application/javascript'}
+      res.end JSON.stringify(status: 'error', message: {path: fspath, code: err.code})
+    else
+      res.writeHead 200, {'Content-Type: application/javascript'}
+      res.end JSON.stringify(status: 'error', message: {path: fspath, code: 'EISDIR'})
+
+sendfile = (res, fspath) ->
+  _fs.stat fspath, (err, info) ->
     unless info?.isFile()
       res.writeHead 404, 'Not file'
-      res.end 'Not file: ' + path
+      res.end 'Not file: ' + fspath
     else
-      res.writeHead 200, {'Content-Type': mimeType(path)}
-      _fs.createReadStream(path).pipe(res)
+      res.writeHead 200, {'Content-Type': mimeType(fspath)}
+      _fs.createReadStream(fspath).pipe(res)
 
-mimeType = (path) ->
-  table =
-    'html': 'text/html'
-    'htm':  'text/html'
-    'css':  'text/css'
-    'js':   'application/javascript'
-    'json': 'application/javascript'
-    'jpeg': 'image/jpeg'
-    'jpg':  'image/jpeg'
-    'png':  'image/png'
-    'gif':  'image/gif'
-  table[_path.extname(path).substring(1)] or 'data/binary'
-
-config = (url, req, res) ->
+config = (res, req, url) ->
   hostname = url.pathname.split('/', 4)[3]
 
   if req.method is 'GET'
@@ -94,6 +119,19 @@ config = (url, req, res) ->
         res.writeHead 201, {'Content-Type': 'application/javascript'}
         res.end JSON.stringify(status: 'ok', message: 'created')
 
+mimeType = (path) ->
+  table =
+    'html': 'text/html'
+    'htm':  'text/html'
+    'css':  'text/css'
+    'js':   'application/javascript'
+    'json': 'application/javascript'
+    'jpeg': 'image/jpeg'
+    'jpg':  'image/jpeg'
+    'png':  'image/png'
+    'gif':  'image/gif'
+  table[_path.extname(path).substring(1)] or 'data/binary'
+
 emitter = (file) ->
   emitters[file] or= new _events.EventEmitter()
 
@@ -105,8 +143,8 @@ resolve = (hostname, pathname) ->
   else if not mounted[hostname]
     return null
 
-  urlroot = mounted[hostname]?.urlroot
-  docroot = mounted[hostname]?.docroot
+  urlroot = mounted[hostname].urlroot
+  docroot = mounted[hostname].docroot
 
   relative = _path.relative urlroot, pathname
   absolute = _path.join(docroot, relative)
@@ -120,7 +158,7 @@ subscribe = (socket) -> (data) ->
     _util.debug _util.format('SUBSCRIBE %j', data)
     url      = _url.parse(data.url)
     emitter_ = emitter resolve(url.hostname, url.pathname)
-    listener = (path) -> socket.emit 'change', data
+    listener = (fspath) -> socket.emit 'change', data
     emitter_.on 'change', listener
 
     sockets[id] or=
@@ -147,11 +185,11 @@ connect = (socket) ->
     socket.on 'disconnect', disconnect socket
     socket.emit 'helo', null
 
-listener = new _fswatch.Listener (path, err, info) ->
+listener = new _fswatch.Listener (fspath, err, info) ->
   if info?.isDirectory()
-    listener.watchTree path
+    listener.watchTree fspath
   unless err?
-    emitter(path).emit 'change', path, err, info
+    emitter(fspath).emit 'change', fspath, err, info
 
 mount = (hostname, docroot, urlroot = '/') ->
   docroot = _path.resolve docroot
