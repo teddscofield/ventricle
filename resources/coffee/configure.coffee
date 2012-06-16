@@ -100,6 +100,24 @@ loadSites = () ->
     success: onSuccess
     dataType: 'json'
 
+initialize = () ->
+  loadSites()
+
+  # Bind submit button
+  httpSubmit = $ '#btn-edit-http'
+  httpSubmit.click (e) ->
+    e.preventDefault()
+    createSite '#edit-http'
+
+  # Bind submit button
+  fileSubmit = $ '#btn-edit-file'
+  fileSubmit.click (e) ->
+    e.preventDefault()
+    createSite '#edit-file'
+
+$ ->
+  initialize()
+
 window.configure =
   activeTab:  activeTab
   createSite: createSite
