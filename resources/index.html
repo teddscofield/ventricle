@@ -58,10 +58,12 @@
                   </div>
 
                   <div class="control-group">
-                    <label class="control-label">Hostname</label>
+                    <label class="control-label">Host</label>
                     <div class="controls">
-                      <input type="text" name="hostname" placeholder="localhost"/>
-                      <p class="help-block">This is the ...</p>
+                      <input type="text" name="host" placeholder="localhost"/>
+                      <p class="help-block">Be sure to include the port number, like `localhost:4567`,
+                      if you're also typing in the port number to view your site. You can create
+                      aliases to this host in the <code>hosts</code> file on the client machine.</p>
                     </div>
                   </div>
 
@@ -69,7 +71,9 @@
                     <label class="control-label">URL Root</label>
                     <div class="controls">
                       <input type="text" name="urlroot" placeholder="/"/>
-                      <p class="help-block">This is the ...</p>
+                      <p class="help-block">If the abose Document Root, containing your static assets,
+                      is mapped to a URL like <code>/css</code> or <code>/assets</code>, enter that
+                      here. Otherwise <code>/</code> is a suitable default.</p>
                     </div>
                   </div>
                 </fieldset>
@@ -81,7 +85,7 @@
             <!-- File tab -->
             <div class="tab-pane" id="edit-file">
               <form class="form-horizontal">
-                <input type="hidden" name="hostname" value="file:"/>
+                <input type="hidden" name="host" value="file:"/>
                 <input type="hidden" name="urlroot" value="/"/>
 
                 <fieldset>
@@ -112,7 +116,7 @@
 
           <table class="sites table table-striped">
             <thead>
-              <th>Hostname</th>
+              <th>Host</th>
               <th>URL Root</th>
               <th>Document Root</th>
               <th></th>

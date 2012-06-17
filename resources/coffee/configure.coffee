@@ -19,21 +19,21 @@ removeAlert = (parent, child) ->
     $('div.alerts', parent).empty()
 
 createSite = (form) ->
-  hostname = $('input[name=hostname]', form).val()
-  urlroot  = $('input[name=urlroot]', form).val()
-  docroot  = $('input[name=docroot]', form).val()
+  host    = $('input[name="host"]',    form).val()
+  urlroot = $('input[name="urlroot"]', form).val()
+  docroot = $('input[name="docroot"]', form).val()
 
   onError = (xhr, msg, text) ->
     console.log 'onError', xhr, msg, text
 
   onSuccess = (data, msg, xhr) ->
-    loadSites()
+    listSites()
     activateTab '#list'
     removeAlert '#list'
-    createAlert '#list', 'alert-success', 'Successfully created <code>' + hostname + '</code>'
+    createAlert '#list', 'alert-success', 'Successfully created <code>' + host + '</code>'
 
   $.ajax
-    url: '/ventricle/sites/' + hostname
+    url: '/ventricle/sites/' + host
     type: 'PUT'
     data:
       urlroot: urlroot
@@ -44,7 +44,7 @@ createSite = (form) ->
     dataType: 'json'
 
 editSite = (options) ->
-  if options.hostname == 'file:'
+  if options.host == 'file:'
     selector  = '#edit-file'
     activateTab '#edit'
     activateTab '#edit-file'
@@ -56,7 +56,7 @@ editSite = (options) ->
   removeAlert '#edit'
   $('input[name="docroot"]', selector).val options.docroot
   $('input[name="urlroot"]', selector).val options.urlroot
-  $('input[name="hostname"]', selector).val options.hostname
+  $('input[name="host"]',    selector).val options.host
 
 removeSite = (options) ->
   onError = (xhr, msg, text) ->
@@ -64,11 +64,11 @@ removeSite = (options) ->
 
   onSuccess = (data, msg, xhr) ->
     removeAlert '#list'
-    createAlert '#list', 'alert-success', 'Successfully deleted <code>' + options.hostname + '</code>'
-    loadSites()
+    createAlert '#list', 'alert-success', 'Successfully deleted <code>' + options.host + '</code>'
+    listSites()
 
   $.ajax
-    url:      '/ventricle/sites/' + options.hostname
+    url:      '/ventricle/sites/' + options.host
     type:     'DELETE'
     cache:    false
     error:    onError
@@ -76,10 +76,10 @@ removeSite = (options) ->
     dataType: 'json'
 
 viewSite = (options) ->
-  if options.hostname == 'file:'
+  if options.host == 'file:'
     window.open "file://#{options.docroot}"
   else
-    window.open "http://#{options.hostname}#{options.urlroot}"
+    window.open "http://#{options.host}#{options.urlroot}"
 
 checkDir = (fspath, tab) ->
   onError = (xhr, msg, text) ->
@@ -126,7 +126,7 @@ readDir = (results) ->
 
   results
 
-loadSites = () ->
+listSites = () ->
   onError = (xhr, msg, text) ->
     console.log 'onError', xhr, msg, text
 
@@ -174,7 +174,7 @@ loadSites = () ->
     dataType: 'json'
 
 initialize = () ->
-  loadSites()
+  listSites()
 
   inputs = $ 'input[name="docroot"]'
   inputs.typeahead
@@ -203,4 +203,4 @@ window.configure =
   activeTab:  activeTab
   createSite: createSite
   removeSite: removeSite
-  loadSites:  loadSites
+  listSites:  listSites

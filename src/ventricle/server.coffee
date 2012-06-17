@@ -28,7 +28,7 @@ app = (port) -> (req, res) ->
 
   unless test = /^\/ventricle($|\/.*$)/.exec url.pathname
     # Not part of the configuration page
-    unless fspath = resolve url.hostname, url.pathname
+    unless fspath = resolve url.host, url.pathname
       res.writeHead 404, 'Not file'
       return res.end 'Not file'
 
@@ -98,19 +98,19 @@ sendfile = (res, fspath) ->
       _fs.createReadStream(fspath).pipe(res)
 
 config = (res, req, url) ->
-  hostname = url.pathname.split('/', 4)[3]
+  host = url.pathname.split('/', 4)[3]
 
   if req.method is 'GET'
-    unless hostname
+    unless host
       jsOk res, mounted
-    else if mounted[hostname]
-      jsOk res, mounted[hostname]
+    else if mounted[host]
+      jsOk res, mounted[host]
     else
       jsErr res, 'not found', 404
 
   else if req.method is 'DELETE'
-    if mounted[hostname]
-      unmount hostname
+    if mounted[host]
+      unmount host
       jsOk res, 'deleted'
     else
       jsOk res, 'not found', 404
@@ -126,7 +126,7 @@ config = (res, req, url) ->
       unless docroot and urlroot
         jsErr res, 'docroot and urlroot required'
       else
-        mount hostname, docroot, urlroot
+        mount host, docroot, urlroot
         jsOk res, 'created', 201
 
 mime = (path) ->
@@ -145,16 +145,19 @@ mime = (path) ->
 emitter = (file) ->
   emitters[file] or= new _events.EventEmitter()
 
-resolve = (hostname, pathname) ->
-  unless hostname
+resolve = (host, pathname) ->
+  host or= 'file:'
+
+  if not mounted[host]
+    return null
+
+  unless host isnt 'file:'
     # file://...
     urlroot = '/'
     docroot = '/'
-  else if not mounted[hostname]
-    return null
-
-  urlroot = mounted[hostname].urlroot
-  docroot = mounted[hostname].docroot
+  else
+    urlroot = mounted[host].urlroot
+    docroot = mounted[host].docroot
 
   relative = _path.relative urlroot, pathname
   absolute = _path.join(docroot, relative)
@@ -170,12 +173,14 @@ resolve = (hostname, pathname) ->
 
 subscribe = (socket) -> (data) ->
   socket.get 'id', (err, id) ->
-    url      = _url.parse(data.url)
-    fspath   = resolve(url.hostname, url.pathname)
+    url    = _url.parse data.url
+    fspath = resolve url.host, url.pathname
+
     unless fspath
       return _util.debug _util.format('IGNORED %j', data)
 
     _util.debug _util.format('SUBSCRIBE %j', data)
+
     emitter_ = emitter fspath
     listener =  -> socket.emit 'change', data
     emitter_.on 'change', listener
@@ -210,24 +215,24 @@ listener = new _fswatch.Listener (fspath, err, info) ->
   unless err?
     emitter(fspath).emit 'change', fspath, err, info
 
-mount = (hostname, docroot, urlroot = '/') ->
+mount = (host, docroot, urlroot = '/') ->
   docroot = _path.resolve docroot
 
-  unmount hostname
-  mounted[hostname] =
-    hostname: hostname
+  unmount host
+  mounted[host] =
+    host: host
     docroot: docroot
     urlroot: urlroot
 
   listener.watchTree docroot
 
-unmount = (hostname) ->
-  return unless mounted[hostname]?
+unmount = (host) ->
+  return unless mounted[host]?
 
-  {docroot}   = mounted[hostname]
-  delete mounted[hostname]
+  {docroot} = mounted[host]
+  delete mounted[host]
 
-  for k, entry of mounted when k is not hostname
+  for k, entry of mounted when k isnt host
     return if entry.docroot is docroot
 
   listener.unwatchTree docroot

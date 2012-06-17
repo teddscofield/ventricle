@@ -75,7 +75,7 @@ initialize = (url) ->
           socket.emit 'subscribe', url: resolveUrl e.src
 
 bootstrap = () ->
-  # Use the script tag from which we were bjorn to learn our hostname
+  # Use the script tag from which we were bjorn to learn our host
   for script in document.getElementsByTagName 'script'
     if '/ventricle/js/subscribe.js' is resolveUrl(script.src, 'pathname')
       initialize resolveUrl(script.src, false)
