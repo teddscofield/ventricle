@@ -85,14 +85,12 @@ task 'compile', (k) ->
   th sh, 'coffee', '-c', '-o', 'lib', 'src',
   th sh, 'coffee', '-c', '-o', 'bin', 'bin',
 
-  th sh, 'rm',   '-f', 'bin/ventricle',
   th sh, 'echo', '#!/usr/bin/env node', options(stdout: 'bin/ventricle'),
   th sh, 'cat',  'bin/ventricle.js',    options(stdout: '+ bin/ventricle'),
   th sh, 'rm',   'bin/ventricle.js',
   th sh, 'chmod', '+x', 'bin/ventricle', k
 
 task 'clean', (k) ->
-  sh    'rm', '-f', '-r', 'lib',
-  th sh, 'rm', '-f', 'bin/ventricle',
+  sh     'rm', '-f', '-r', 'lib',
   th sh, 'rm', '-f', 'resources/js/subscribe.js',
   th sh, 'rm', '-f', 'resources/js/configure.js', k
