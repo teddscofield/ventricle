@@ -43,22 +43,43 @@ createSite = (form) ->
     success: onSuccess
     dataType: 'json'
 
-deleteSite = (hostname) ->
+editSite = (options) ->
+  if options.hostname == 'file:'
+    selector  = '#edit-file'
+    activateTab '#edit'
+    activateTab '#edit-file'
+  else
+    selector  = '#edit-http'
+    activateTab '#edit'
+    activateTab '#edit-http'
+
+  removeAlert '#edit'
+  $('input[name="docroot"]', selector).val options.docroot
+  $('input[name="urlroot"]', selector).val options.urlroot
+  $('input[name="hostname"]', selector).val options.hostname
+
+removeSite = (options) ->
   onError = (xhr, msg, text) ->
     console.log 'onError', xhr, msg, text
 
   onSuccess = (data, msg, xhr) ->
     removeAlert '#list'
-    createAlert '#list', 'alert-success', 'Successfully deleted <code>' + hostname + '</code>'
+    createAlert '#list', 'alert-success', 'Successfully deleted <code>' + options.hostname + '</code>'
     loadSites()
 
   $.ajax
-    url: '/ventricle/sites/' + hostname
-    type: 'DELETE'
-    cache: false
-    error: onError
-    success: onSuccess
+    url:      '/ventricle/sites/' + options.hostname
+    type:     'DELETE'
+    cache:    false
+    error:    onError
+    success:  onSuccess
     dataType: 'json'
+
+viewSite = (options) ->
+  if options.hostname == 'file:'
+    window.open "file://#{options.docroot}"
+  else
+    window.open "http://#{options.hostname}#{options.urlroot}"
 
 checkDir = (fspath, tab) ->
   onError = (xhr, msg, text) ->
@@ -67,7 +88,6 @@ checkDir = (fspath, tab) ->
     createAlert '#edit', 'alert-error doc-root-err', 'Document Root: ' + data.message.code
 
   onSuccess = (data, msg, xhr) ->
-    message = data.message
     removeAlert '#edit', '.doc-root-err'
 
   unless fspath
@@ -111,36 +131,46 @@ loadSites = () ->
     console.log 'onError', xhr, msg, text
 
   onSuccess = (data, msg, xhr) ->
-    sites = data.message
-    tbody = []
+    tbody = $('#list table.sites')
+              .hide()
+              .find('tbody')
+              .empty()
 
-    $('#list table.sites').hide()
-
-    for name, options of sites
-      tbody.push """
+    for name, options of data.message
+      row = $ """
       <tr>
         <td>#{name}</td>
         <td>#{options.urlroot}</td>
         <td>#{options.docroot}</td>
         <td>
-         <button class="btn btn-mini btn-info"><i class="icon-cog icon-white"></i> Edit</button>
-         <button class="btn btn-mini btn-danger"><i class="icon-trash icon-white"></i> Remove</button>
+          <div class="btn-group">
+            <button class="btn btn-mini"><i class="icon-globe icon-black"></i> View</button>
+            <button class="btn btn-mini"><i class="icon-pencil icon-black"></i> Edit</button>
+            <button class="btn btn-mini btn-danger"><i class="icon-trash icon-white"></i> Remove</button>
+          </div>
         </td>
       </tr>
       """
 
+      tbody.append row
+      view   = $ 'button:eq(0)', row
+      edit   = $ 'button:eq(1)', row
+      remove = $ 'button:eq(2)', row
+
+      view.click   ((options) -> (e) -> viewSite options) options
+      edit.click   ((options) -> (e) -> editSite options) options
+      remove.click ((options) -> (e) -> removeSite options) options
+
     if tbody.length
-      $('#list table.sites tbody').html(tbody.join '')
       $('#list table.sites').show()
     else
-      $('#list table.sites').hide()
       createAlert '#list', 'alert-info', 'No sites have been configured. Click "New/Edit Site" to create one.'
 
   $.ajax
-    url: '/ventricle/sites'
-    cache: false
-    error: onError
-    success: onSuccess
+    url:      '/ventricle/sites'
+    cache:    false
+    error:    onError
+    success:  onSuccess
     dataType: 'json'
 
 initialize = () ->
@@ -172,5 +202,5 @@ $ ->
 window.configure =
   activeTab:  activeTab
   createSite: createSite
-  deleteSite: deleteSite
+  removeSite: removeSite
   loadSites:  loadSites

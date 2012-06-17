@@ -215,6 +215,7 @@ mount = (hostname, docroot, urlroot = '/') ->
 
   unmount hostname
   mounted[hostname] =
+    hostname: hostname
     docroot: docroot
     urlroot: urlroot
 
