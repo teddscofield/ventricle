@@ -3,6 +3,7 @@ _path   = require 'path'
 _util   = require 'util'
 {spawn} = require 'child_process'
 
+# Pop and return the last argument when it's a callback function
 cb = (args) ->
   if typeof args[args.length - 1] is 'function'
     args.pop()
@@ -16,17 +17,55 @@ cb = (args) ->
       else if code isnt 0
         throw "err: #{lastcmd} exited with status #{code}"
 
+# Pop and return the last argument when it's an options hash
+op = (args) ->
+  if typeof args[args.length - 1] is 'object'
+    args.pop()
+  else
+    new Object
+
+# Execute a command in a child process
 sh = (cmd, args...) ->
   callback = cb args
+  options  = op args
+  options.stdin  or= '/dev/null'
+  options.stdout or= process.stdout
+  options.stderr or= process.stderr
+
+  if typeof options.stdin is 'string'
+    options.stdin = _fs.createReadStream options.stdin
+
+  if typeof options.stdout is 'string'
+    _options = flags: 'w'
+
+    # Append mode
+    if options.stdout.slice(0, 2) is '+ '
+      _options.flags = 'a+'
+      options.stdout = options.stdout.substr 2
+
+    options.stdout = _fs.createWriteStream options.stdout, _options
+
+  if typeof options.stderr is 'string'
+    _options = flags: 'w'
+
+    # Append mode
+    if options.stdout.slice(0, 2) is '+ '
+      _options.flags = 'a+'
+      options.stderr = options.stdout.substr 2
+
+    options.stderr = _fs.createWriteStream options.stderr, _options
+
   console.log cmd, args...
 
   child = spawn cmd, args
-  child.stdout.pipe process.stdout
-  child.stderr.pipe process.stderr
-  child.stdin.end()
+  child.stdout.pipe options.stdout
+  child.stderr.pipe options.stderr
+  options.stdin.pipe child.stdin
+
   child.on 'exit', (code, signal) ->
     callback code, signal, cmd, args
 
+# Then...
 th = (f, args...) ->
   (code, signal, lastcmd, lastargs) ->
     if code is 0
@@ -36,26 +75,18 @@ th = (f, args...) ->
     else
       throw "err: #{lastcmd} exited with status #{code}"
 
+# Used to override grammar precedence: parentheses always win
+options = (x) -> x
+
 ###########################################################################
 
 task 'compile', (k) ->
-  sh 'coffee', '-c', '-o', 'lib', 'src',
-  th sh, 'coffee', '-c', '-o', 'resources/js', 'resources/coffee', k
+  sh     'coffee', '-c', '-o', 'resources/js', 'resources/coffee',
+  th sh, 'coffee', '-c', '-o', 'lib', 'src',
+  th sh, 'coffee', '-c', '-o', 'bin', 'bin',
 
-task 'concat', (k) ->
-  r = require 'requirejs'
-  c = { baseUrl:  'lib/ventricle'
-      , out:      'lib.js'
-      , optimize: 'none'}
-  r.optimize(c, console.log)
-
-task 'build', (k) ->
-  invoke 'compile',
-  th invoke, 'concat'
-
-task 'package', (k) ->
-  console.log 'todo'
-
-task 'install', (k) ->
-  console.log 'todo'
-
+  th sh, 'rm',   '-f', 'bin/ventricle',
+  th sh, 'echo', '#!/usr/bin/env node', options(stdout: 'bin/ventricle'),
+  th sh, 'cat',  'bin/ventricle.js',    options(stdout: '+ bin/ventricle'),
+  th sh, 'rm',   'bin/ventricle.js',
+  th sh, 'chmod', '+x', 'bin/ventricle', k
