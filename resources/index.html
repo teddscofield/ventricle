@@ -31,7 +31,7 @@
         <!-- New/Edit Site tab -->
         <div class="tab-pane active" id="edit">
           <div class="page-header">
-            <h1>New Site</h1>
+            <h1>New/Edit Site</h1>
           </div>
 
           <ul class="nav nav-tabs">
@@ -61,9 +61,10 @@
                     <label class="control-label">Host</label>
                     <div class="controls">
                       <input type="text" name="host" placeholder="localhost"/>
-                      <p class="help-block">Be sure to include the port number, like `localhost:4567`,
-                      if you're also typing in the port number to view your site. You can create
-                      aliases to this host in the <code>hosts</code> file on the client machine.</p>
+                      <p class="help-block">Be sure to include the port number, like
+                      <code>localhost:4567</code> if you're also typing in the port number
+                      to view your site. You can create aliases to this host in the
+                      <code>hosts</code> file on the client machine.</p>
                     </div>
                   </div>
 
@@ -76,9 +77,12 @@
                       here. Otherwise <code>/</code> is a suitable default.</p>
                     </div>
                   </div>
-                </fieldset>
 
-                <button id="btn-edit-http" class="btn btn-primary">Submit</button>
+                  <div class="form-actions">
+                    <button id="btn-edit-http" class="btn btn-primary">Submit</button>
+                    <button type="reset" class="btn">Cancel</button>
+                  </div>
+                </fieldset>
               </form>
             </div>
 
@@ -97,9 +101,12 @@
                       (stylesheets, JS, images, HTML) used for development.</p>
                     </div>
                   </div>
-                </fieldset>
 
-                <button id="btn-edit-file" class="btn btn-primary">Create</button>
+                  <div class="form-actions">
+                    <button id="btn-edit-file" class="btn btn-primary">Create</button>
+                    <button type="reset" class="btn">Cancel</button>
+                  </div>
+                </fieldset>
               </form>
             </div>
           </div>

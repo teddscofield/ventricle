@@ -111,7 +111,7 @@ readDir = (results) ->
 
   onSuccess = (data, msg, xhr) =>
     choices = data.message.dirs.sort()
-    choices = (this.query + x for x in choices)
+    choices = (data.message.path + x for x in choices)
 
     results.length = 0
     results.push choices...

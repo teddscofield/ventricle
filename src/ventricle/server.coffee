@@ -58,6 +58,8 @@ app = (port) -> (req, res) ->
     sendfile res, _path.join(resources, urlpath)
 
 checkdir = (res, fspath) ->
+  fspath = _path.resolve fspath
+
   _fs.readdir fspath, (err, children) ->
     if err?
       return jsErr res, path: fspath, code: err.code, 404
@@ -153,7 +155,7 @@ emitter = (file) ->
 resolve = (host, pathname) ->
   host or= 'file:'
 
-  if not mounted[host]
+  unless mounted[host]
     return
 
   if host is 'file:'
@@ -223,7 +225,7 @@ listener = new _fswatch.Listener (fspath, err, info) ->
     emitter(fspath).emit 'change', fspath, err, info
 
 mount = (host, docroot, urlroot = '/') ->
-  docroot = _path.resolve docroot
+  docroot = _path.normalize docroot
 
   unmount host
   mounted[host] =
