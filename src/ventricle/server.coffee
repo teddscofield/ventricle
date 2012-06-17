@@ -104,7 +104,7 @@ sendfile = (res, fspath) ->
       res.writeHead 200, 'Content-Type': mime fspath
       _fs.createReadStream(fspath).pipe res
     else
-      jsErr res, path: fspath, code: 'directory listing unsupported'
+      jsErr res, path: fspath, code: 'EISDIR'
 
 config = (res, req, url) ->
   host = url.pathname.split('/', 4)[3]
