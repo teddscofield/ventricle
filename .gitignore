@@ -1,2 +1,5 @@
 lib
 node_modules
+resources/js/configure.js
+resources/js/subscribe.js
+bin/ventricle

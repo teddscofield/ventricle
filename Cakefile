@@ -90,3 +90,9 @@ task 'compile', (k) ->
   th sh, 'cat',  'bin/ventricle.js',    options(stdout: '+ bin/ventricle'),
   th sh, 'rm',   'bin/ventricle.js',
   th sh, 'chmod', '+x', 'bin/ventricle', k
+
+task 'clean', (k) ->
+  sh    'rm', '-f', '-r', 'lib',
+  th sh, 'rm', '-f', 'bin/ventricle',
+  th sh, 'rm', '-f', 'resources/js/subscribe.js',
+  th sh, 'rm', '-f', 'resources/js/configure.js', k
