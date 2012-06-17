@@ -98,11 +98,13 @@ checkurl = (res, host, urlpath) ->
 
 sendfile = (res, fspath) ->
   _fs.stat fspath, (err, info) ->
-    unless info?.isFile()
-      jsErr res, path: fspath, code: err.code, 404
-    else
+    if err?
+      jsErr res, path: fspath, code: err?.code || 'EISDIR', 404
+    else if info?.isFile()
       res.writeHead 200, 'Content-Type': mime fspath
       _fs.createReadStream(fspath).pipe res
+    else
+      jsErr res, path: fspath, code: 'directory listing unsupported'
 
 config = (res, req, url) ->
   host = url.pathname.split('/', 4)[3]
