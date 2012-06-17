@@ -32,5 +32,3 @@ for option in argv._
     fail "missing ?/path/to/docroot: #{option}" unless docroot
 
     server.mount url.host, docroot, urlroot
-
-console.info "Ready on http://localhost:#{argv.port}/ventricle"

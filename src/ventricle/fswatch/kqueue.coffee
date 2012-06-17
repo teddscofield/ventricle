@@ -4,23 +4,28 @@ _util     = require 'util'
 _events   = require 'events'
 emitters  = new Object
 
+console  =
+  debug: (message, args...) -> # _util.debug _util.format message, args...
+  log:   (message, args...) -> _util.log   _util.format message, args...
+
 # Return the existing EventEmitter or create one
 emitter = (path) ->
   unless emitters[path]?
     try
-      #util.debug _util.format('watch %s', path)
+      console.debug 'watch %s', path
       emitters[path]   = new _events.EventEmitter()
       emitters[path].w = _fs.watch path, (event, file) ->
         if e = emitters[path]
           _fs.stat path, (err, info) ->
             unless err?.code == 'ENOENT'
-              #util.debug _util.format('emit %s %s', event, path)
+              console.debug 'emit %s %s', event, path
               e.emit event, path, err, info
   emitters[path]
 
 unlisten = (path, callback) ->
   if e = emitters[path]
-    #util.debug _util.format('unlisten %s', path)
+    console.debug 'unlisten %s', path
+
     if callback
       e.removeListener 'change', callback
       e.removeListener 'rename', callback
@@ -36,13 +41,14 @@ class Listener
   constructor: (callback) ->
     @listening = new Object
     @callback  = (path, err, info) =>
-      _util.debug _util.format('callback %s %j', path, err)
+      console.debug 'callback %s %j', path, err
+
       delete @listening[path] if err?
       callback path, err, info
 
   watchFile: (path) ->
     return if @listening[path]
-    #util.debug _util.format('watchFile %s', path)
+    console.debug 'watchFile %s', path
     @listening[path] = true
 
     e = emitter path
@@ -58,40 +64,43 @@ class Listener
     @listening[dir] or= new Object
 
     updateDir = (quiet) => () =>
-      #util.debug _util.format('compareDir %s', dir)
+      console.debug 'compareDir %s', dir
+
       complete = 0
       current  = new Object
 
       _fs.readdir dir, (err, list) =>
         for path in (_path.join(dir, file) for file in list)
-          ((path) =>
+          do (path) =>
             _fs.stat path, (err, info) =>
               if info?.isFile()
                 current[path] = info
                 compareFile path, info, quiet
               if list.length == complete += 1
                 checkRemoved current
-                @listening[dir] = current) path
+                @listening[dir] = current
 
     compareFile = (path, current, quiet) =>
-      #util.debug _util.format(' compareFile %s', path)
+      console.debug ' compareFile %s', path
+
       previous = @listening[dir]
       a = current.mtime.getTime()
       b = previous[path]?.mtime?.getTime()
 
-      if not b
-        #util.debug _util.format('  created %s', path)
+      unless b
+        console.debug '  created %s', path
         this.watchFile path
         @callback path, null, current unless quiet
       else if current.ino is not previous[path].ino
-        #util.debug _util.format('  replaced %s', path)
+        console.debug '  replaced %s', path
         @callback path, null, current
 
     checkRemoved = (current) =>
-      #util.debug _util.format(' checkRemoved %s', dir)
+      console.debug ' checkRemoved %s', dir
+
       for path, info of @listening[dir]
         unless current[path]
-          #util.debug _util.format('  removed %s', path)
+          console.debug '  removed %s', path
           this.unwatchFile path
           @callback path, true, null
 
@@ -109,9 +118,9 @@ class Listener
       this.watchDir dir
 
       for path in (_path.join(dir, file) for file in list)
-        ((path) =>
+        do (path) =>
           _fs.stat path, (err, info) =>
-            this.watchTree path if info?.isDirectory())(path)
+            this.watchTree path if info?.isDirectory()
 
   unwatchTree: (dir) ->
     null

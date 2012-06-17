@@ -12,38 +12,44 @@ emitters = new Object
 sockets  = new Object
 mounted  = new Object
 
+console  =
+  debug: (message, args...) -> # _util.debug _util.format message, args...
+  log:   (message, args...) -> _util.log   _util.format message, args...
+
 jsOk = (res, message, code = 200) ->
-  res.writeHead code, {'Content-Type': mime 'response.js'}
-  res.end JSON.stringify(status: 'ok', message: message)
+  res.writeHead code, 'Content-Type': mime 'response.js'
+  res.end JSON.stringify status: 'ok', message: message
 
 jsErr = (res, message, code = 400) ->
-  res.writeHead code, {'Content-Type': mime 'response.js'}
-  res.end JSON.stringify(status: 'error', message: message)
+  res.writeHead code, 'Content-Type': mime 'response.js'
+  res.end JSON.stringify status: 'error', message: message
 
 app = (port) -> (req, res) ->
-  _util.debug _util.format('> http://%s%s', req.headers.host, req.url)
-
-  # Parse the requested URL
+  # Parse the requested URL and its query string
   url = _url.parse 'http://' + req.headers.host + req.url, true
 
+  console.log '%s', url.href
+
+  # Request is not for the config app?
   unless test = /^\/ventricle($|\/.*$)/.exec url.pathname
-    # Not part of the configuration page
     unless fspath = resolve url.host, url.pathname
-      res.writeHead 404, 'Not file'
-      return res.end 'Not file'
+      return jsErr res, 'not file', 404
 
     return sendfile res, fspath
 
-  # Dealing with config page from here down
-  resources = _path.join(__dirname, '..', '..', 'resources')
+  # Dealing with config app from here down
+  resources = _path.join __dirname, '..', '..', 'resources'
   urlpath   = test[1]
   urlpath   = '/index.html' if not urlpath or urlpath is '/'
 
-  if test = /^\/checkdir\/(.*)$/.exec urlpath
-    checkdir res, _path.join('/' + test[1])
+  if test  = /^\/checkdir\/(.*)$/.exec urlpath
+    fspath = test[1]
+    checkdir res, _path.join '/', fspath
 
-  else if test = /^\/checkurl\/([^./]+)(.*)$/.exec urlpath
-    checkurl res, test[1], test[2]
+  else if test = /^\/checkurl\/([^/]+)(.*)$/.exec urlpath
+    host    = test[1]
+    urlpath = test[2]
+    checkurl res, host, urlpath
 
   else if /^\/sites/.test urlpath
     config res, req, url
@@ -54,29 +60,29 @@ app = (port) -> (req, res) ->
 checkdir = (res, fspath) ->
   _fs.readdir fspath, (err, children) ->
     if err?
-      jsErr res, path: fspath, code: err.code, 404
-    else
-      files = []
-      dirs  = []
-      count = 0
+      return jsErr res, path: fspath, code: err.code, 404
 
-      unless children.length
-        jsOk res, path: fspath, files: files, dirs: dirs
+    # Filter hidden files and directories
+    children = (x for x in children when x[0] isnt '.')
 
-      for child in children
-        if child[0] is '.'
-          if (count += 1) is children.length
-            jsOk res, path: fspath, files: filse, dirs: dirs
-        else
-          ((child) ->
-            _fs.stat _path.join(fspath, child), (err, info) ->
-              if info?.isDirectory()
-                dirs.push child
-              else if info?.isFile()
-                files.push child
+    files    = []
+    dirs     = []
+    count    = children.length
 
-              if (count += 1) is children.length
-                jsOk res, path: fspath, files: files, dirs: dirs)(child)
+    unless count
+      # Empty directory, respond immediately
+      return jsOk res, path: fspath, files: files, dirs: dirs
+
+    for child in children
+      do (child) ->
+        _fs.stat _path.join(fspath, child), (err, info) ->
+          if info?.isDirectory()
+            dirs.push child
+          else if info?.isFile()
+            files.push child
+
+          unless count -= 1
+            jsOk res, path: fspath, files: files, dirs: dirs
 
 checkurl = (res, host, urlpath) ->
   fspath = resolve host, urlpath
@@ -91,11 +97,10 @@ checkurl = (res, host, urlpath) ->
 sendfile = (res, fspath) ->
   _fs.stat fspath, (err, info) ->
     unless info?.isFile()
-      res.writeHead 404, 'Not file'
-      res.end 'Not file: ' + fspath
+      jsErr res, path: fspath, code: err.code, 404
     else
-      res.writeHead 200, {'Content-Type': mime(fspath)}
-      _fs.createReadStream(fspath).pipe(res)
+      res.writeHead 200, 'Content-Type': mime fspath
+      _fs.createReadStream(fspath).pipe res
 
 config = (res, req, url) ->
   host = url.pathname.split('/', 4)[3]
@@ -149,10 +154,9 @@ resolve = (host, pathname) ->
   host or= 'file:'
 
   if not mounted[host]
-    return null
+    return
 
-  unless host isnt 'file:'
-    # file://...
+  if host is 'file:'
     urlroot = '/'
     docroot = '/'
   else
@@ -162,12 +166,12 @@ resolve = (host, pathname) ->
   relative = _path.relative urlroot, pathname
   absolute = _path.join(docroot, relative)
 
-  if relative.slice(0, 2) == '..'
-    _util.debug _util.format('  relative: %s', relative)
-    _util.debug _util.format('  outsider: %s', absolute)
+  if relative.slice(0, 2) is '..'
+    console.debug '  relative: %s', relative
+    console.debug '  outsider: %s', absolute
   else
-    _util.debug _util.format('  relative: %s', relative)
-    _util.debug _util.format('  absolute: %s', absolute)
+    console.debug '  relative: %s', relative
+    console.debug '  absolute: %s', absolute
 
     absolute
 
@@ -177,9 +181,9 @@ subscribe = (socket) -> (data) ->
     fspath = resolve url.host, url.pathname
 
     unless fspath
-      return _util.debug _util.format('IGNORED %j', data)
+      return console.log 'IGNORED %j', data
 
-    _util.debug _util.format('SUBSCRIBE %j', data)
+    console.log 'SUBSCRIBE %j', data
 
     emitter_ = emitter fspath
     listener =  -> socket.emit 'change', data
@@ -207,11 +211,14 @@ connect = (socket) ->
   socket.set 'id', @id += 1, () ->
     socket.on 'subscribe', subscribe socket
     socket.on 'disconnect', disconnect socket
-    socket.emit 'helo', null
+    socket.emit 'helo'
 
 listener = new _fswatch.Listener (fspath, err, info) ->
   if info?.isDirectory()
+    # Start watching new directory, watchTree will ignore us
+    # if the directory is already being watched.
     listener.watchTree fspath
+
   unless err?
     emitter(fspath).emit 'change', fspath, err, info
 
@@ -224,6 +231,7 @@ mount = (host, docroot, urlroot = '/') ->
     docroot: docroot
     urlroot: urlroot
 
+  console.log 'MOUNTED %j', mounted[host]
   listener.watchTree docroot
 
 unmount = (host) ->
@@ -233,6 +241,7 @@ unmount = (host) ->
   delete mounted[host]
 
   for k, entry of mounted when k isnt host
+    # Some other site also has this docroot
     return if entry.docroot is docroot
 
   listener.unwatchTree docroot
@@ -243,10 +252,9 @@ start = (port) ->
 
   sockets = _io.listen _app
   sockets.sockets.on 'connection', connect
-  exports
 
-bootstrap = (url) ->
-  _
+  console.log "Ready on http://localhost:#{port}/ventricle"
+  exports
 
 exports = module.exports =
   start: start
