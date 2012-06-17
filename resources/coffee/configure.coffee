@@ -2,7 +2,9 @@
 activeTab = (tabContent = 'div.container > div.tab-content') ->
   $ '> div.tab-pane.active', tabContent
 
-knownSites = []
+activateTab = (id) ->
+  link = $ 'ul.nav a[href="' + id + '"]'
+  link.tab 'show'
 
 createAlert = (parent, klass, message) ->
   parent = $ 'div.alerts', parent
@@ -14,7 +16,7 @@ removeAlert = (parent, child) ->
     $(child, parent).remove()
   else
     # Remove all alerts
-    $(parent).empty()
+    $('div.alerts', parent).empty()
 
 createSite = (form) ->
   hostname = $('input[name=hostname]', form).val()
@@ -26,9 +28,7 @@ createSite = (form) ->
 
   onSuccess = (data, msg, xhr) ->
     loadSites()
-    link = $ 'ul.nav a[href="#list"]'
-    link.tab 'show'
-    
+    activateTab '#list'
     removeAlert '#list'
     createAlert '#list', 'alert-success', 'Successfully created <code>' + hostname + '</code>'
 
@@ -91,6 +91,7 @@ readDir = (results) ->
 
   onSuccess = (data, msg, xhr) =>
     choices = data.message.dirs.sort()
+    choices = (this.query + x for x in choices)
 
     results.length = 0
     results.push choices...
@@ -115,14 +116,7 @@ loadSites = () ->
 
     $('#list table.sites').hide()
 
-    knownSites.length = 0
-
     for name, options of sites
-      knownSites.push
-        hostname: name
-        urlroot: options.urlroot
-        docroot: options.docroot
-
       tbody.push """
       <tr>
         <td>#{name}</td>
@@ -180,4 +174,3 @@ window.configure =
   createSite: createSite
   deleteSite: deleteSite
   loadSites:  loadSites
-  knownSites: knownSites
