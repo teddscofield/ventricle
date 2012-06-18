@@ -91,6 +91,7 @@ task 'compile', (k) ->
   th sh, 'chmod', '+x', 'bin/ventricle', k
 
 task 'clean', (k) ->
-  sh     'rm', '-f', '-r', 'lib',
+  sh 'echo', 'This page left intentionally blank, do not delete!', options(stdout: 'bin/ventricle'),
+  th sh, 'rm', '-f', '-r', 'lib',
   th sh, 'rm', '-f', 'resources/js/subscribe.js',
   th sh, 'rm', '-f', 'resources/js/configure.js', k

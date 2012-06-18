@@ -110,8 +110,10 @@ readDir = (results) ->
     console.log xhr.responseText
 
   onSuccess = (data, msg, xhr) =>
+    if data.message.path == '/'
+      data.message.path = ''
     choices = data.message.dirs.sort()
-    choices = (data.message.path + x for x in choices)
+    choices = (data.message.path + '/' + x for x in choices)
 
     results.length = 0
     results.push choices...
