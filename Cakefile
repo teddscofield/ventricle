@@ -80,7 +80,7 @@ options = (x) -> x
 
 ###########################################################################
 
-task 'compile', (k) ->
+task 'build', (k) ->
   sh     'coffee', '-c', '-o', 'resources/js', 'resources/coffee',
   th sh, 'coffee', '-c', '-o', 'lib', 'src',
   th sh, 'coffee', '-c', '-o', 'bin', 'bin',

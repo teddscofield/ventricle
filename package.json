@@ -1,21 +1,24 @@
-{ "url":          "https://github.com/kputnam/ventricle"
-, "name":         "ventricle"
-, "version":      "0.1.0"
-, "homepage":     "https://github.com/kputnam/ventricle"
-, "description":  ""
+{ 'url':          'https://github.com/kputnam/ventricle'
+, 'name':         'ventricle'
+, 'version':      '0.1.0'
+, 'homepage':     'https://github.com/kputnam/ventricle'
+, 'description':  ''
 
-, "keywords":     ["socket.io", "realtime", "css"]
-, "author":       {"url":   "https://github.com/kputnam"
-                  ,"name":  "Kyle Putnam"
-                  ,"email": "putnam.kyle@gmail.com"}
+, 'keywords':     ['socket.io', 'realtime', 'css']
+, 'author':       {'url':   'https://github.com/kputnam'
+                  ,'name':  'Kyle Putnam'
+                  ,'email': 'putnam.kyle@gmail.com'}
 
-, "bin":          {"ventricle": "bin/ventricle"}
-, "main":         "lib/ventricle.js"
-, "scripts":      {"install": "cake compile"}
-, "directories":  {"bin": "bin", "lib": "lib", "src": "src", "resources": "resources"}
+, 'bin':          {'ventricle': 'bin/ventricle'}
+, 'main':         'lib/ventricle.js'
+, 'scripts':      {'install': 'cake build'}
+, 'directories':  {'bin': 'bin'
+                  ,'lib': 'lib'
+                  ,'src': 'src'
+                  ,'resources': 'resources'}
 
-, "engines":          {"node": ">= 0.6.5" }
-, "dependencies":     {"socket.io": "~ 0.9.6"
-                      ,"optimist":  "~ 0.3.4"
-                      ,"coffee-script": "~ 1.1.3"}
+, 'engines':          {'node': '>= 0.6.5' }
+, 'dependencies':     {'socket.io': '~ 0.9.6'
+                      ,'optimist':  '~ 0.3.4'
+                      ,'coffee-script': '~ 1.1.3'}
 }
