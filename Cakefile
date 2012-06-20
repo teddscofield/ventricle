@@ -4,7 +4,7 @@ _util   = require 'util'
 {spawn} = require 'child_process'
 
 _coffee = 'coffee'
-isWindows = require('os').platform().substring(0,3) is 'win'
+isWindows = process.platform[0..2] is 'win'
 if isWindows
   _coffee = 'coffee.cmd'
 
