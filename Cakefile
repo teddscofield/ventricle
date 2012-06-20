@@ -3,6 +3,11 @@ _path   = require 'path'
 _util   = require 'util'
 {spawn} = require 'child_process'
 
+_coffee = 'coffee'
+isWindows = require('os').platform().substring(0,3) is 'win'
+if isWindows
+  _coffee = 'coffee.cmd'
+
 # Pop and return the last argument when it's a callback function
 cb = (args) ->
   if typeof args[args.length - 1] is 'function'
@@ -28,6 +33,8 @@ op = (args) ->
 sh = (cmd, args...) ->
   callback = cb args
   options  = op args
+  # TODO: this causes errors on Windows when C:\dev\null does not exist.
+  # A user must manually create that file to work around the issue.
   options.stdin  or= '/dev/null'
   options.stdout or= process.stdout
   options.stderr or= process.stderr
@@ -81,17 +88,17 @@ options = (x) -> x
 ###########################################################################
 
 task 'build', (k) ->
-  sh     'coffee', '-c', '-o', 'resources/js', 'resources/coffee',
-  th sh, 'coffee', '-c', '-o', 'lib', 'src',
-  th sh, 'coffee', '-c', '-o', 'bin', 'bin',
+  sh     _coffee, '-c', '-o', 'resources/js', 'resources/coffee',
+  th sh, _coffee, '-c', '-o', 'lib', 'src',
+  th sh, _coffee, '-c', '-o', 'bin', 'bin',
 
-  th sh, 'echo', '#!/usr/bin/env node', options(stdout: 'bin/ventricle'),
+  th sh, 'cp', 'ventricle.header', 'bin/ventricle',
   th sh, 'cat',  'bin/ventricle.js',    options(stdout: '+ bin/ventricle'),
   th sh, 'rm',   'bin/ventricle.js',
   th sh, 'chmod', '+x', 'bin/ventricle', k
 
 task 'clean', (k) ->
-  sh 'echo', 'This page left intentionally blank, do not delete!', options(stdout: 'bin/ventricle'),
+  sh 'cp','ventricle.blank','bin/ventricle',
   th sh, 'rm', '-f', '-r', 'lib',
   th sh, 'rm', '-f', 'resources/js/subscribe.js',
   th sh, 'rm', '-f', 'resources/js/configure.js', k
