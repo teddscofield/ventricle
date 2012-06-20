@@ -18,6 +18,8 @@ Step 1)
   - in /var/www create a symbolic link to the ventricle installs resources folder.  For example:
 cd /var/www
 ln -s /usr/lib/node_modules/ventricle/resources/ ventricle
+TODO:  this isn't a good idea, only serves for getting things to come alive.  Try an Apache proxy rule next.
+
 
   - in the html file you are working out of, add this java script include:
 <script type="text/javascript" src="http://local.dev:4567/ventricle/js/subscribe.js"></script>
