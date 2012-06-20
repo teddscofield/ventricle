@@ -14,6 +14,7 @@ Scenario looks this:
 Dev site: local.dev  (running through a local Apache instance)
 Site files: /var/www
 
+Step 1)
   - in /var/www create a symbolic link to the ventricle installs resources folder.  For example:
 cd /var/www
 ln -s /usr/lib/node_modules/ventricle/resources/ ventricle
@@ -26,8 +27,10 @@ ventricle http://local.dev?/var/www
 
   - edit a css or html file underneath /var/www.
 
+Step 2)
   - ???
-  
+
+Step 3)
   - profit!
   
 As soon as you save the file, the browser *should* refresh or reload it automatically.
