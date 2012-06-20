@@ -10,23 +10,26 @@ CSS changes are reloaded in without refreshing the page. JavaScript and markup c
 
 Incomplete Usage Example
 ------------------------
-Scenario is this, you have a development site using the local.dev server name and the files are hosted in /var/www.  Within /var/www you have to set a symbolic link to the 
-
+Scenario looks this:
 Dev site: local.dev  (running through a local Apache instance)
 Site files: /var/www
 
-step 1) in /var/www create a symbolic link to the ventricle installs resources folder.  For example:
+  - in /var/www create a symbolic link to the ventricle installs resources folder.  For example:
 cd /var/www
 ln -s /usr/lib/node_modules/ventricle/resources/ ventricle
 
-step 2) in the html file you are working out of, add this java script include:
+  - in the html file you are working out of, add this java script include:
 <script type="text/javascript" src="http://local.dev:4567/ventricle/js/subscribe.js"></script>
 
-step 3) start Ventricle with this command line:
+  - start Ventricle with this command line:
 ventricle http://local.dev?/var/www
 
-step 4) edit a css or html file underneath /var/www.
+  - edit a css or html file underneath /var/www.
 
+  - ???
+  
+  - profit!
+  
 As soon as you save the file, the browser *should* refresh or reload it automatically.
 
 Dependencies
